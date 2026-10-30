@@ -97,8 +97,11 @@ func TestRemoteLifecycleDocker(t *testing.T) {
 
 	must(run(nil, "", "remote", "status", where))
 	mustFail(run(nil, "", "remote", "install", where), "owner-only")
-	must(run(append(owner, "SEC_DIST="+oldDist), "", "remote", "install", where), "installed sec", "sec init")
+	must(run(append(owner, "SEC_DIST="+oldDist), "", "remote", "install", where), "installed sec", "sec init", "agent skill installed")
 	must(run(nil, "", "remote", "install", where), "already on")
+	if !strings.Contains(in("sh", "-c", "head -3 /root/.claude/skills/sec/SKILL.md; grep -c 'sec export' /root/.claude/settings.json"), "name: sec") {
+		t.Fatal("remote install must put the agent skill there")
+	}
 	must(run(owner, "", "sync", "SHARED_TEST", where), "stored (v1)")
 	in("sh", "-c", "printf only-there | /root/.local/bin/sec set ONLY_THERE_TEST")
 	must(run(nil, "", "remote", "status", where), "0.0.1-old", "same build no", "vault      yes (2 secret(s))")

@@ -43,7 +43,7 @@ tasks:
       - task: smoke
 
   install:
-    desc: Install sec to ~/.local/bin and link the agent skill + harness deny rules
+    desc: Install sec to ~/.local/bin, its agent skill and the harness deny rules
     cmds:
       - task: build
       # install(1) unlinks the destination first. A plain `cp` overwrites the
@@ -53,4 +53,4 @@ tasks:
       - mkdir -p ~/.local/bin
       - rm -f ~/.local/bin/sec
       - install -m 0755 bin/sec ~/.local/bin/sec
-      - ~/.local/bin/sec skill install --from {{.ROOT_DIR}}/skills/sec
+      - ~/.local/bin/sec skill install    # the skill ships inside the binary

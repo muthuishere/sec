@@ -27,12 +27,13 @@ func init() {
 	register("remote", "remote install|upgrade|status|uninstall WHERE — put sec on another machine/container/pod, or bring it to this version (no secrets move)", cmdRemote)
 }
 
-const remoteUsage = `usage: sec remote install WHERE [--dry]   install sec there if missing (+ sec init)
-       sec remote upgrade WHERE [--dry]   replace it when it differs from this sec; keeps sec.prev
+const remoteUsage = `usage: sec remote install WHERE [--dry]   install sec there if missing (+ sec init, + agent skill)
+       sec remote upgrade WHERE [--dry]   replace it when it differs; keeps sec.prev; refreshes the skill
        sec remote status  WHERE           its version vs this one, OS/arch, vault y/n
        sec remote uninstall WHERE [--dry] remove the binary (+ sec.prev, Windows PATH entry); keeps the vault
        sec remote uninstall WHERE --purge [--force]
                                           also delete its vault + identity — owner at a terminal only
+--no-skill: leave the agent skill alone.
 WHERE is any sync route: ssh://host, docker://ctr, podman://ctr, k8s://ns/pod[/ctr],
 chains like ssh://web+docker://api, or a saved target.`
 
@@ -103,6 +104,7 @@ func cmdRemote(args []string) error {
 	dry := fs.Bool("dry", false, "show what would change; change nothing")
 	remoteSec := fs.String("remote-sec", "sec", "sec binary on the other end, if not on PATH or in the user's folder")
 	purge := fs.Bool("purge", false, "uninstall: also delete the remote vault and identity (owner, at a terminal)")
+	noSkill := fs.Bool("no-skill", false, "install/upgrade: don't install or refresh the agent skill there")
 	force := fs.Bool("force", false, "uninstall --purge: even if some secrets exist only there")
 	rest, err := parse(fs, args)
 	if err != nil {
@@ -137,7 +139,7 @@ func cmdRemote(args []string) error {
 			}
 		}
 		rs := *remoteSec
-		if _, err := ensureRemoteSec(s, &t, &rs, true, *dry); err != nil {
+		if _, err := ensureRemoteSec(s, &t, &rs, true, *dry, !*noSkill); err != nil {
 			return err
 		}
 		if !*dry {
@@ -148,7 +150,7 @@ func cmdRemote(args []string) error {
 	if sub == "uninstall" {
 		return remoteUninstall(s, &t, st, *dry, *purge, *force)
 	}
-	return remoteUpgrade(s, &t, st, rest[0], *dry)
+	return remoteUpgrade(s, &t, st, rest[0], *dry, !*noSkill)
 }
 
 func remoteStatus(t transport, st remoteState) error {
@@ -177,7 +179,7 @@ func remoteStatus(t transport, st remoteState) error {
 // the old one kept as .prev, rolled back if the new one fails `sec version`
 // or the vault no longer lists the same number of names. The vault and the
 // identity are never touched.
-func remoteUpgrade(s *store.Store, t *transport, st remoteState, where string, dry bool) error {
+func remoteUpgrade(s *store.Store, t *transport, st remoteState, where string, dry, skill bool) error {
 	if st.path == "" {
 		return fmt.Errorf("sec is not on %s — use: sec remote install %s", t.label, where)
 	}
@@ -187,6 +189,9 @@ func remoteUpgrade(s *store.Store, t *transport, st remoteState, where string, d
 	}
 	if sum == st.sum {
 		fmt.Printf("✓ %s already runs this build (%s) — nothing to do\n", t.label, st.version)
+		if skill && !dry && owner.IsOwner() {
+			remoteSkill(t, st.path) // cheap, and fixes a machine whose skill is missing or stale
+		}
 		return nil
 	}
 	dir, name := path.Dir(st.path), path.Base(st.path)
@@ -225,6 +230,9 @@ func remoteUpgrade(s *store.Store, t *transport, st remoteState, where string, d
 	fmt.Printf("✓ upgraded sec on %s: %s → %s\n  %s (sha256 %s…), previous kept as %s.prev\n", t.label, st.version, now, st.path, sum[:12], name)
 	if st.vault {
 		fmt.Printf("  vault intact: %d secret(s) before and after\n", st.names)
+	}
+	if skill {
+		remoteSkill(t, st.path)
 	}
 	return nil
 }

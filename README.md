@@ -25,6 +25,7 @@ sec sync DB_PW --from ssh://hetzner                        # …and back
 sec export --only DB_PW --for age1… --out x.sec            # another sec with no connection → sec import x.sec
 sec remote status ssh://hetzner                            # sec there: version vs this one, vault y/n
 sec remote upgrade ssh://hetzner                           # bring it to this build; keeps sec.prev, rolls back on failure
+                                                           # (install/upgrade/sync --install also put the agent skill there)
 sec help move                                              # which of sync / push / export / remote to use
 sec keys                                                   # what .env.example needs that the vault lacks
 sec logs DB_PW --since 7d                                  # what happened
@@ -75,7 +76,8 @@ task install        # builds, copies to ~/.local/bin, links the agent skill, add
 sec init
 ```
 
-`sec skill install` symlinks `skills/sec` into `~/.claude/skills/` and `~/.agents/skills/` and merges
+`sec skill install` writes the skill built into the binary to `~/.claude/skills/sec` (and `$CLAUDE_CONFIG_DIR/skills/sec` when set) and
+`~/.agents/skills/sec` (`--from skills/sec` symlinks a checkout instead) and merges
 `Read(~/.config/sec/**)`, `Read(**/.env*)`, `Bash(sec get:*)`, `Bash(sec export:*)` into
 `~/.claude/settings.json` `permissions.deny` — so the harness, not the model, refuses.
 `sec sync` is deliberately not denied: it never shows a value, only the remote vault can open what

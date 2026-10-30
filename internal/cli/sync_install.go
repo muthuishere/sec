@@ -21,7 +21,7 @@ import (
 // user's own folder — never root, never Administrator — runs `sec init` if
 // needed and points *remoteSec at it. done=true means a --dry plan was
 // printed and the sync should stop.
-func ensureRemoteSec(s *store.Store, t *transport, remoteSec *string, install, dry bool) (done bool, err error) {
+func ensureRemoteSec(s *store.Store, t *transport, remoteSec *string, install, dry, skill bool) (done bool, err error) {
 	goos, goarch, err := remotePlatform(t)
 	if err != nil {
 		return false, err
@@ -84,12 +84,25 @@ func ensureRemoteSec(s *store.Store, t *transport, remoteSec *string, install, d
 		}
 		fmt.Printf("✓ sec init on %s\n", t.label)
 	}
+	if skill {
+		remoteSkill(t, *remoteSec)
+	}
 	// the remote's own audit log records who installed it
 	if _, err := t.sec(nil, *remoteSec, "id", "--record-install", "sha256="+sum+",by="+owner.Agent()); err != nil {
 		return false, err
 	}
 	s.Audit("sync.install", owner.Agent(), nil, map[string]string{"host": t.label, "sha256": sum, "path": *remoteSec, "os": goos, "arch": goarch})
 	return false, nil
+}
+
+// remoteSkill installs the agent skill that ships inside the remote sec, so
+// agents there know how to use it. A failure is reported, never fatal.
+func remoteSkill(t *transport, bin string) {
+	if _, err := t.sec(nil, bin, "skill", "install"); err != nil {
+		fmt.Printf("  ⚠ agent skill not installed on %s: %v (run there: sec skill install)\n", t.label, err)
+		return
+	}
+	fmt.Printf("✓ agent skill installed on %s (~/.claude/skills/sec, ~/.agents/skills/sec + deny rules)\n", t.label)
 }
 
 // remotePlatform asks the other end what it is: `uname -sm` anywhere with a

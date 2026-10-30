@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"secure-agent/internal/version"
+	"secure-agent/skills"
 
 	"secure-agent/internal/cert"
 	"secure-agent/internal/owner"
@@ -83,15 +85,16 @@ func runPlain(name string, args ...string) error {
 	return c.Run()
 }
 
-// skill install: symlink the repo's skills/sec dir into both skill roots and
-// merge Read-deny rules into ~/.claude/settings.json so the harness — not the
-// model — refuses to open the vault or dotenv files.
+// skill install: put the agent skill into both skill roots and merge deny
+// rules into ~/.claude/settings.json so the harness — not the model — refuses
+// to open the vault or dotenv files. The skill ships inside the binary, so
+// this works anywhere; --from DIR symlinks a checkout instead (development).
 func cmdSkill(args []string) error {
 	if len(args) == 0 || args[0] != "install" {
 		return fmt.Errorf("usage: sec skill install [--from DIR] [--no-settings]")
 	}
 	fs := flags("skill install")
-	from := fs.String("from", "", "skill source dir (default: skills/sec next to the source checkout, or $SEC_SKILL_DIR)")
+	from := fs.String("from", "", "symlink this skill dir instead of the copy built into sec (development; or $SEC_SKILL_DIR)")
 	noSettings := fs.Bool("no-settings", false, "skip editing ~/.claude/settings.json")
 	if _, err := parse(fs, args[1:]); err != nil {
 		return err
@@ -100,29 +103,75 @@ func cmdSkill(args []string) error {
 	if src == "" {
 		src = os.Getenv("SEC_SKILL_DIR")
 	}
-	if src == "" {
-		return fmt.Errorf("--from DIR (the repo's skills/sec) or SEC_SKILL_DIR is required")
-	}
-	src, _ = filepath.Abs(src)
-	if _, err := os.Stat(filepath.Join(src, "SKILL.md")); err != nil {
-		return fmt.Errorf("%s has no SKILL.md", src)
+	if src != "" {
+		src, _ = filepath.Abs(src)
+		if _, err := os.Stat(filepath.Join(src, "SKILL.md")); err != nil {
+			return fmt.Errorf("%s has no SKILL.md", src)
+		}
 	}
 	home, _ := os.UserHomeDir()
-	for _, root := range []string{filepath.Join(home, ".claude", "skills"), filepath.Join(home, ".agents", "skills")} {
+	claudeDirs := []string{filepath.Join(home, ".claude")}
+	if d := os.Getenv("CLAUDE_CONFIG_DIR"); d != "" && filepath.Clean(d) != claudeDirs[0] {
+		claudeDirs = append(claudeDirs, d) // where this Claude actually reads skills and settings
+	}
+	roots := []string{filepath.Join(home, ".agents", "skills")}
+	for _, d := range claudeDirs {
+		roots = append(roots, filepath.Join(d, "skills"))
+	}
+	for _, root := range roots {
 		if err := os.MkdirAll(root, 0o755); err != nil {
 			return err
 		}
 		dst := filepath.Join(root, "sec")
-		os.Remove(dst)
-		if err := os.Symlink(src, dst); err != nil {
+		if err := clearSkillDir(dst); err != nil {
 			return err
 		}
-		fmt.Printf("✓ %s → %s\n", dst, src)
+		if src != "" {
+			if err := os.Symlink(src, dst); err != nil {
+				return err
+			}
+			fmt.Printf("✓ %s → %s\n", dst, src)
+			continue
+		}
+		if err := os.MkdirAll(dst, 0o755); err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(dst, "SKILL.md"), skills.SecSkill, 0o644); err != nil {
+			return err
+		}
+		fmt.Printf("✓ %s (sec %s)\n", dst, version.Version)
 	}
 	if *noSettings {
 		return nil
 	}
-	return mergeDeny(filepath.Join(home, ".claude", "settings.json"))
+	for _, d := range claudeDirs {
+		if err := mergeDeny(filepath.Join(d, "settings.json")); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// clearSkillDir makes room at dst: a symlink goes; a folder sec wrote (just
+// SKILL.md) goes; anything else is someone's own work and is refused.
+func clearSkillDir(dst string) error {
+	fi, err := os.Lstat(dst)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if fi.Mode()&os.ModeSymlink != 0 || !fi.IsDir() {
+		return os.Remove(dst)
+	}
+	entries, _ := os.ReadDir(dst)
+	for _, e := range entries {
+		if e.Name() != "SKILL.md" {
+			return fmt.Errorf("%s holds files sec did not write (%s) — move them, then re-run", dst, e.Name())
+		}
+	}
+	return os.RemoveAll(dst)
 }
 
 var denyRules = []string{

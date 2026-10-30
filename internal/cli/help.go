@@ -173,8 +173,8 @@ var docs = map[string]helpDoc{
 		examples: []string{"sec cert ca", "sec cert issue --cn api.local --san 127.0.0.1"},
 		next:     "sec set TLS --from ./certs  ·  sec push TLS WHERE"},
 	"skill": {group: "setup",
-		syntax:   []string{"sec skill install [--from DIR] [--no-settings]"},
-		examples: []string{"sec skill install"},
+		syntax:   []string{"sec skill install [--no-settings]", "sec skill install --from DIR   # symlink a checkout (development)"},
+		examples: []string{"sec skill install", "sec skill install --from ./skills/sec"},
 		next:     "agents now read the sec skill; the harness denies sec get / sec export"},
 }
 

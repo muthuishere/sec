@@ -60,6 +60,7 @@ func cmdSync(args []string) error {
 	dry := fs.Bool("dry", false, "show names, host and remote key fingerprint; send nothing")
 	repin := fs.Bool("repin", false, "owner-only: accept a changed remote key for this host")
 	remoteSec := fs.String("remote-sec", "sec", "sec binary on the other end (non-login ssh shells may need ~/.local/bin/sec)")
+	noSkill := fs.Bool("no-skill", false, "with --install: don't install the agent skill there")
 	install := fs.Bool("install", false, "owner-only: if sec is missing there, stream a matching binary into ~/.local/bin there (no root) and sec init")
 	rest, err := parse(fs, args)
 	if err != nil {
@@ -101,7 +102,7 @@ func cmdSync(args []string) error {
 	out, err := t.sec(nil, *remoteSec, "id")
 	if err != nil {
 		var done bool
-		if done, err = ensureRemoteSec(s, &t, remoteSec, *install, *dry); err != nil || done {
+		if done, err = ensureRemoteSec(s, &t, remoteSec, *install, *dry, !*noSkill); err != nil || done {
 			return err
 		}
 		if out, err = t.sec(nil, *remoteSec, "id"); err != nil {
