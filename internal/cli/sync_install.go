@@ -54,7 +54,7 @@ func ensureRemoteSec(s *store.Store, t *transport, remoteSec *string, install, d
 	if !install {
 		return false, fmt.Errorf("sec not found on %s (%s/%s). Re-run with --install to stream it into %s over the same transport (owner-only, no admin), or install it yourself", t.label, goos, goarch, dir)
 	}
-	if err := requireOwner("sync --install"); err != nil {
+	if err := requireOwnerTo("sync --install", "it changes the software on another machine"); err != nil {
 		return false, err
 	}
 	sum := ""
@@ -70,7 +70,7 @@ func ensureRemoteSec(s *store.Store, t *transport, remoteSec *string, install, d
 		}
 		h := sha256.Sum256(b)
 		sum = hex.EncodeToString(h[:])
-		dst, err := t.writeBinary(dir, b, sum)
+		dst, err := t.writeBinary(dir, "", b, sum)
 		if err != nil {
 			s.Audit("sync.install", owner.Agent(), nil, map[string]string{"host": t.label, "sha256": sum, "error": err.Error()})
 			return false, fmt.Errorf("install on %s: %w", t.label, err)
@@ -125,7 +125,7 @@ if ($c) { $c.Source -replace '\\','/'; exit 0 }
 exit 1`)
 		return strings.TrimSpace(string(out)), err
 	}
-	out, err := t.sh(nil, `if command -v "$1" >/dev/null 2>&1 || test -x "$1"; then echo "$1"; elif test -x "$HOME/.local/bin/sec"; then echo "$HOME/.local/bin/sec"; else exit 1; fi`, given)
+	out, err := t.sh(nil, `if p=$(command -v "$1" 2>/dev/null); then echo "$p"; elif test -x "$1"; then echo "$1"; elif test -x "$HOME/.local/bin/sec"; then echo "$HOME/.local/bin/sec"; else exit 1; fi`, given)
 	return strings.TrimSpace(string(out)), err
 }
 
@@ -145,28 +145,67 @@ func (t *transport) installDir() (string, error) {
 	return strings.TrimSpace(string(home)) + "/.local/bin", nil
 }
 
-// writeBinary streams b into dir, verifies its sha256 there and swaps it in.
-func (t *transport) writeBinary(dir string, b []byte, sum string) (string, error) {
+// writeBinary streams b into dir/name (default sec, sec.exe on Windows),
+// verifies its sha256 there and swaps it in. An existing binary is kept as
+// name.prev so an upgrade can roll back.
+func (t *transport) writeBinary(dir, name string, b []byte, sum string) (string, error) {
 	if t.windows {
+		if name == "" {
+			name = "sec.exe"
+		}
 		out, err := t.ps(b, `$ErrorActionPreference = 'Stop'
-$d = '`+dir+`'
+$d = '`+dir+`'; $dst = Join-Path $d '`+name+`'
 New-Item -ItemType Directory -Force $d | Out-Null
 $tmp = Join-Path $d 'sec.new.exe'
 $in = [Console]::OpenStandardInput(); $f = [IO.File]::Create($tmp); $in.CopyTo($f); $f.Close()
 $h = (Get-FileHash $tmp -Algorithm SHA256).Hash.ToLower()
 if ($h -ne '`+sum+`') { Remove-Item $tmp; throw "checksum mismatch: $h" }
-Move-Item -Force $tmp (Join-Path $d 'sec.exe')
-if ($IsLinux -or $IsMacOS) { chmod 0755 (Join-Path $d 'sec.exe') }  # pwsh as a Unix login shell
+if (Test-Path $dst) { Copy-Item -Force $dst ($dst + '.prev') }
+Move-Item -Force $tmp $dst
+if ($IsLinux -or $IsMacOS) { chmod 0755 $dst }  # pwsh as a Unix login shell
 $up = [Environment]::GetEnvironmentVariable('Path', 'User'); if ($null -eq $up) { $up = '' }
 if (($up -split ';') -notcontains $d.Replace('/', '\')) { [Environment]::SetEnvironmentVariable('Path', ($up.TrimEnd(';') + ';' + $d.Replace('/', '\')), 'User') }
-(Join-Path $d 'sec.exe') -replace '\\','/'`)
+$dst -replace '\\','/'`)
 		return strings.TrimSpace(string(out)), err
 	}
-	_, err := t.sh(b, `set -e; d="$1"; mkdir -p "$d"; cat > "$d/.sec.new"
+	if name == "" {
+		name = "sec"
+	}
+	_, err := t.sh(b, `set -e; d="$1"; dst="$d/$3"; mkdir -p "$d"; cat > "$d/.sec.new"
 got=$( (sha256sum "$d/.sec.new" 2>/dev/null || shasum -a 256 "$d/.sec.new") | cut -d' ' -f1)
 if [ "$got" != "$2" ]; then rm -f "$d/.sec.new"; echo "checksum mismatch: $got" >&2; exit 1; fi
-chmod 0755 "$d/.sec.new"; mv -f "$d/.sec.new" "$d/sec"`, dir, sum)
-	return dir + "/sec", err
+chmod 0755 "$d/.sec.new"
+if [ -e "$dst" ]; then cp -p "$dst" "$dst.prev"; fi
+mv -f "$d/.sec.new" "$dst"`, dir, sum, name)
+	return dir + "/" + name, err
+}
+
+// rollback puts path.prev back over path.
+func (t *transport) rollback(path string) error {
+	if t.windows {
+		_, err := t.ps(nil, `Move-Item -Force '`+path+`.prev' '`+path+`'`)
+		return err
+	}
+	_, err := t.sh(nil, `mv -f "$1.prev" "$1"`, path)
+	return err
+}
+
+// remoteSum is the sha256 of the file at path on the far end.
+func (t *transport) remoteSum(path string) (string, error) {
+	var out []byte
+	var err error
+	if t.windows {
+		out, err = t.ps(nil, `(Get-FileHash '`+path+`' -Algorithm SHA256).Hash.ToLower()`)
+	} else {
+		p := path
+		if !strings.Contains(p, "/") {
+			if o, e := t.sh(nil, `command -v "$1"`, p); e == nil {
+				p = strings.TrimSpace(string(o))
+			}
+		}
+		out, err = t.sh(nil, `(sha256sum "$1" 2>/dev/null || shasum -a 256 "$1") | cut -d' ' -f1`, p)
+	}
+	return strings.TrimSpace(string(out)), err
 }
 
 // goPlatform maps `uname -sm` to GOOS/GOARCH.

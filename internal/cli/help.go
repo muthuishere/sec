@@ -110,6 +110,15 @@ var docs = map[string]helpDoc{
 		examples: []string{"sec sync DB_PW,API_KEY ssh://deploy@db.example.com", "sec sync DB_PW docker://api --install", "sec sync DB_PW k8s://prod/api-7d9f/app", "sec sync DB_PW ssh://web+docker://api   # ssh in, then into a container", "sec sync DB_PW --from ssh://db --dry"},
 		owner:    "agents may sync to a target whose key is already pinned or saved (sec target add NAME age1…). First contact, --install and --repin are owner-only: they decide which machine is trusted. --install never needs admin: sec goes into ~/.local/bin (or %LOCALAPPDATA%\\Programs\\sec on Windows).",
 		next:     "sec target add db ssh://db  ·  sec help move"},
+	"remote": {group: "move",
+		syntax: []string{"sec remote status WHERE", "sec remote install WHERE [--dry]", "sec remote upgrade WHERE [--dry]",
+			"sec remote uninstall WHERE [--dry]", "sec remote uninstall WHERE --purge [--force]"},
+		examples: []string{"sec remote status ssh://db", "sec remote upgrade ssh://db --dry", "sec remote install ssh://web+docker://api",
+			"sec remote uninstall k8s://prod/api-7d9f/app"},
+		owner: "install, upgrade and uninstall are owner-only: they change software on another machine (never as root). " +
+			"--purge deletes that machine's vault and identity: the owner must type at a real terminal (SEC_OWNER=1 is not enough), " +
+			"see the names, and type the remote fingerprint back; secrets that exist only there need --force. Agents can never purge.",
+		next: "upgrade keeps sec.prev and rolls back if the new sec fails or the vault's name count changes"},
 	"push": {group: "move",
 		syntax:   []string{"sec push NAME[,NAME] WHERE [--as NEW] [--mode 0600] [--once]", "sec push NAME -- CMD-ON-THE-OTHER-END [--path P]"},
 		examples: []string{"sec push DB_PW .env", "sec push TLS ssh://web/etc/app/certs", "sec push DB_PW docker://api/run/secrets/db_pw"},
@@ -191,12 +200,18 @@ const moveGuide = `sec help move — getting secrets onto another machine
       here:   sec export --only DB_PW --for age1… --out x.sec
       there:  sec import x.sec
 
+  Put sec itself there, or bring it to this version (no secrets move)  →  sec remote
+      sec remote status ssh://db                     its version vs this one, vault y/n
+      sec remote upgrade ssh://db                    keeps sec.prev, rolls back on failure
+      sec remote uninstall ssh://db                  keeps its vault; --purge (owner at a terminal) deletes it
+
   A plaintext .env for a tool that needs one  →  sec export --confirm (owner only)
       sec export --only DB_PW --out prod.env --confirm
 
 Who may run what:
   agents  sync to a pinned/saved target · push to recorded places · import
-  owner   first-contact sync, --install, --repin, first push elsewhere, export
+  owner   first-contact sync, --install, --repin, first push elsewhere, export,
+          remote install/upgrade/uninstall; --purge only at a real terminal
           (owner = a terminal on stdin, or SEC_OWNER=1)`
 
 // passThrough commands hand their args to another program: only a leading

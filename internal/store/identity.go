@@ -269,10 +269,11 @@ type IdentityInfo struct {
 	Headless      bool    `json:"headless"`
 	HeadlessWhy   string  `json:"headless_why,omitempty"`
 	KeyringUsable bool    `json:"keyring_usable"`
+	Home          string  `json:"home"`
 }
 
 func (s *Store) IdentityInfo() IdentityInfo {
-	info := IdentityInfo{Backend: s.backend, PublicKey: s.PublicKey()}
+	info := IdentityInfo{Backend: s.backend, PublicKey: s.PublicKey(), Home: s.Home}
 	switch s.backend {
 	case BackendEnv:
 		info.Location = "$SEC_IDENTITY (this process only)"

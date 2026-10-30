@@ -45,6 +45,8 @@ sec run STRIPE_KEY,DB_URL=DATABASE_URL -- go test ./...          # as env vars
 | **copy secrets to a server / container / pod running sec** | `sec sync A,B ssh://host` · `docker://ctr` · `podman://ctr` · `k8s://[ctx/]ns/pod[/ctr]` |
 | …a container / pod on a server | chain hops with `+`: `ssh://web+docker://api` · `ssh://web+k8s://ns/pod` · `ssh://bastion+ssh://db` |
 | pull secrets back from one | `sec sync A,B --from ssh://host` |
+| what sec is on a machine / is it current | `sec remote status WHERE` (any sync route) |
+| install / upgrade / remove sec there (owner) | `sec remote install\|upgrade\|uninstall WHERE` — `--dry` first; you hand the owner the command |
 | check before sending | `sec sync A,B WHERE --dry` (names + remote key fingerprint, sends nothing) |
 | a program there reads a file / .env / folder | `sec push NAME WHERE` (`./app/.env`, `ssh://h/etc/app/certs`, `docker://c/run/secrets`) |
 | no connection at all | owner: `sec export --only A,B --for <their sec id> --out x.sec`; there: `sec import x.sec` |
@@ -65,7 +67,8 @@ sec run STRIPE_KEY,DB_URL=DATABASE_URL -- go test ./...          # as env vars
 | `sec sync` to a target whose key is **pinned or saved** | `sec sync` **first contact**, `--install`, `--repin` |
 | `sec sync --from` a pinned target | `export` (sealed or `--confirm` plaintext) |
 | `push` / `rotate` / `ok` re-pushing to **recorded** places | first `push` to another machine (`ssh://`, `docker://`, `k8s://`) |
-| `sec target ls` | `identity move/export/import/adopt`, `--allow-output-only` |
+| `sec target ls`, `sec remote status` | `identity move/export/import/adopt`, `--allow-output-only` |
+| | `sec remote install/upgrade/uninstall` · `--purge` **never** (owner typing at a terminal only) |
 
 Owner = a TTY on stdin or `SEC_OWNER=1`. Never set `SEC_OWNER` yourself.
 

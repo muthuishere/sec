@@ -101,6 +101,14 @@ func parse(fs *flag.FlagSet, args []string) ([]string, error) {
 
 func open() (*store.Store, error) { return store.Open() }
 
+// requireOwnerTo is requireOwner for verbs whose risk is not a printed value.
+func requireOwnerTo(what, why string) error {
+	if !owner.IsOwner() {
+		return fmt.Errorf("%s is owner-only: %s. Ask the owner to run it (they may add SEC_OWNER=1)", what, why)
+	}
+	return nil
+}
+
 func requireOwner(what string) error {
 	if !owner.IsOwner() {
 		return fmt.Errorf("%s is owner-only: it would expose a value. Ask the owner to run it (they may add SEC_OWNER=1)", what)

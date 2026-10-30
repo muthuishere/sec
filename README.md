@@ -23,7 +23,9 @@ sec sync DB_PW docker://api --install                      # …or a container /
 sec sync DB_PW ssh://web+docker://api                      # ssh in, then into a container (+podman://, +k8s://)
 sec sync DB_PW --from ssh://hetzner                        # …and back
 sec export --only DB_PW --for age1… --out x.sec            # another sec with no connection → sec import x.sec
-sec help move                                              # which of sync / push / export to use
+sec remote status ssh://hetzner                            # sec there: version vs this one, vault y/n
+sec remote upgrade ssh://hetzner                           # bring it to this build; keeps sec.prev, rolls back on failure
+sec help move                                              # which of sync / push / export / remote to use
 sec keys                                                   # what .env.example needs that the vault lacks
 sec logs DB_PW --since 7d                                  # what happened
 sec ok                                                     # check everything, re-push stale copies
@@ -131,6 +133,12 @@ run next — and a wrong usage prints the closest correct command.
   checksum-verified binary into that user's own folder (`~/.local/bin`, or
   `%LOCALAPPDATA%\Programs\sec` added to the user PATH) — never root, sudo or Administrator —
   and runs `sec init` there. Both sides audit.
+- **`sec remote install|upgrade|status|uninstall WHERE`**: the sec binary on any sync route, no
+  secrets moved. Upgrade compares sha256 (same build = no-op), keeps `sec.prev`, never touches the
+  vault or identity, and rolls back if the new binary fails `sec version` or the vault's name count
+  changes. Uninstall keeps the vault and says where it is; `--purge` deletes it only for the owner
+  typing at a real terminal, after listing the names and typing the remote fingerprint back, and
+  refuses secrets that exist nowhere else unless `--force`.
 - **No prompts, ever**: sec never triggers an OS dialog — with no login keychain (a moved
   `HOME`, a sandbox) the keyring is simply not used.
 - **`sec agent` needs a real terminal.** It owns the pty, so with no tty there is no keyboard to
