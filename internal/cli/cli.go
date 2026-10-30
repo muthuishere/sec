@@ -13,9 +13,9 @@ import (
 
 	"golang.org/x/term"
 
-	"github.com/muthuishere/secure-agent/internal/owner"
-	"github.com/muthuishere/secure-agent/internal/store"
-	"github.com/muthuishere/secure-agent/internal/version"
+	"secure-agent/internal/owner"
+	"secure-agent/internal/store"
+	"secure-agent/internal/version"
 )
 
 type command struct {

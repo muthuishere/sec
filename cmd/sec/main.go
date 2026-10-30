@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/muthuishere/secure-agent/internal/cli"
+	"secure-agent/internal/cli"
 )
 
 func main() {

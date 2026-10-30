@@ -11,11 +11,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/muthuishere/secure-agent/internal/bundle"
-	"github.com/muthuishere/secure-agent/internal/envfile"
-	"github.com/muthuishere/secure-agent/internal/owner"
-	"github.com/muthuishere/secure-agent/internal/store"
-	"github.com/muthuishere/secure-agent/internal/tmpl"
+	"secure-agent/internal/bundle"
+	"secure-agent/internal/envfile"
+	"secure-agent/internal/owner"
+	"secure-agent/internal/store"
+	"secure-agent/internal/tmpl"
 )
 
 type Result struct {

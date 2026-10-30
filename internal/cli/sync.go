@@ -12,8 +12,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/muthuishere/secure-agent/internal/owner"
-	"github.com/muthuishere/secure-agent/internal/store"
+	"secure-agent/internal/owner"
+	"secure-agent/internal/store"
 )
 
 // sec sync moves secrets between two sec vaults in one step, over any

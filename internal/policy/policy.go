@@ -9,8 +9,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/muthuishere/secure-agent/internal/envfile"
-	"github.com/muthuishere/secure-agent/internal/store"
+	"secure-agent/internal/envfile"
+	"secure-agent/internal/store"
 )
 
 // secretBases are file names that hold credentials wherever they live.

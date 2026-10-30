@@ -5,9 +5,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/muthuishere/secure-agent/internal/owner"
-	"github.com/muthuishere/secure-agent/internal/redact"
-	"github.com/muthuishere/secure-agent/internal/store"
+	"secure-agent/internal/owner"
+	"secure-agent/internal/redact"
+	"secure-agent/internal/store"
 )
 
 func init() {

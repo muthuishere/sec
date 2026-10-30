@@ -17,7 +17,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/muthuishere/secure-agent/internal/detect"
+	"secure-agent/internal/detect"
 )
 
 var (

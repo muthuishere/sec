@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/muthuishere/secure-agent/internal/cert"
-	"github.com/muthuishere/secure-agent/internal/owner"
+	"secure-agent/internal/cert"
+	"secure-agent/internal/owner"
 )
 
 func init() {

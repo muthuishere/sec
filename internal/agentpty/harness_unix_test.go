@@ -12,7 +12,7 @@ import (
 
 	gopty "github.com/aymanbagabas/go-pty"
 
-	"github.com/muthuishere/secure-agent/internal/detect"
+	"secure-agent/internal/detect"
 )
 
 // TestRunThroughRealPty drives Run the way a terminal would: an outer pty

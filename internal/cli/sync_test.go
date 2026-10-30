@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/muthuishere/secure-agent/internal/store"
+	"secure-agent/internal/store"
 )
 
 const (

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/muthuishere/secure-agent/internal/place"
-	"github.com/muthuishere/secure-agent/internal/store"
+	"secure-agent/internal/place"
+	"secure-agent/internal/store"
 )
 
 func init() {

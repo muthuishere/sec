@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/muthuishere/secure-agent/internal/redact"
-	"github.com/muthuishere/secure-agent/internal/tmpl"
+	"secure-agent/internal/redact"
+	"secure-agent/internal/tmpl"
 )
 
 // outputOnly are commands whose whole job is to print their input. A

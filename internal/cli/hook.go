@@ -9,10 +9,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/muthuishere/secure-agent/internal/detect"
-	"github.com/muthuishere/secure-agent/internal/envfile"
-	"github.com/muthuishere/secure-agent/internal/policy"
-	"github.com/muthuishere/secure-agent/internal/redact"
+	"secure-agent/internal/detect"
+	"secure-agent/internal/envfile"
+	"secure-agent/internal/policy"
+	"secure-agent/internal/redact"
 )
 
 func init() {
