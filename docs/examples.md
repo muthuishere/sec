@@ -12,6 +12,7 @@ sec import .env                     sec push  NAME  ./certs     a file / folder,
 sec import x.sec  (sealed export)   sec push  NAME  ssh://host/etc/app/certs
                                     sec push  NAME  docker://ctr/run/secrets
                                     sec render config.tmpl config.yaml
+                                    sec sync  NAMES ssh://host  another sec (also docker://, k8s://), sealed
                                     sec push  NAMES ssh://host  another sec, live + kept in sync
                                     sec export --for KEY        another sec, as a sealed file
 
@@ -57,15 +58,22 @@ sec push GCP_SA ssh://hetzner/etc/myapp/sa.json --mode 0640
 
 ## 5. Another sec instance
 
-Two ways, nothing else:
+Three ways (`sec help move` says which):
 
 ```bash
-# a) ssh — live, and kept in sync on every rotate
+# a) sync — one step over ssh / docker / k8s, sealed for its key, nothing on disk
+sec sync DB_PW,TLS ssh://deploy@hetzner  # first contact (owner) pins hetzner's sec key
+sec sync DB_PW docker://api --install    # no sec in the container yet: streams it (~/.local/bin)
+sec sync DB_PW k8s://prod/api-7d9f/app   # [context/]namespace/pod[/container]
+sec sync DB_PW --from ssh://hetzner      # the other way
+sec sync DB_PW hz --dry                  # names + remote key fingerprint, sends nothing
+
+# b) push into its vault — recorded, so every rotate re-pushes it
 sec target add hz ssh://deploy@hetzner
 sec push DB_PW,TLS hz                    # lands in hetzner's own sec vault
 # on hetzner:  sec run DB_PW ./myapp
 
-# b) no ssh — export a sealed file, import it there
+# c) no connection — export a sealed file, import it there
 # on the other machine:  sec id          → age1…
 sec export --only DB_PW,TLS --for age1... --out to-hz.sec
 # copy to-hz.sec any way you like; only that vault can open it

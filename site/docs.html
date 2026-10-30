@@ -50,6 +50,7 @@
         <li><a href="#import">sec import</a></li>
         <li><a href="#export">sec export</a></li>
         <li><a href="#place">sec place</a></li>
+        <li><a href="#sync">sec sync</a></li>
         <li><a href="#push">sec push</a></li>
         <li><a href="#target">sec target</a></li>
         <li><a href="#rotate">sec rotate</a></li>
@@ -188,8 +189,8 @@ sec import to-hz.sec          # sealed for this vault</pre>
                  no --confirm needed, the file is encrypted</pre>
     <p>With <code>--for</code> the output is an age-armored file only that vault can open — safe to copy
     over any channel. The other machine runs <code>sec import FILE</code>. It is a one-off copy: after a
-    rotate, export again. If you can ssh there, <a href="#push"><code>sec push NAME ssh://host</code></a>
-    is live and stays in sync instead.</p>
+    rotate, export again. If you can reach it over ssh, docker or k8s,
+    <a href="#sync"><code>sec sync NAME WHERE</code></a> does it in one step.</p>
 <pre class="block">ssh hetzner sec id                                  # → age1…
 sec export --only DB_PW,TLS --for age1… --out to-hz.sec</pre>
 
@@ -203,6 +204,33 @@ sec export --only DB_PW,TLS --for age1… --out to-hz.sec</pre>
   --record-only                              record without pushing the value now
 
 sec place APP_DB_PW --gh muthuishere/app:production --gcp my-project</pre>
+
+    <h2 id="sync">sec sync</h2>
+    <p>Move secrets into (or out of) another sec in one step — over ssh, docker/podman or k8s. The
+    remote key is fetched, the values are sealed for it in memory and streamed into
+    <code>sec import -</code> there: no temp file on either side, only names and versions printed.</p>
+<pre class="block">sec sync NAME[,NAME] WHERE [--dry] [--install] [--repin] [--remote-sec P]
+sec sync NAME[,NAME] --from WHERE [--dry]
+
+WHERE
+  ssh://[user@]host[:port]             ssh host CMD
+  docker://ctr   podman://ctr          docker exec -i ctr CMD
+  k8s://pod  k8s://ns/pod[/container]  k8s://context/ns/pod/[container]
+  hz                                   a saved <a href="#target">target</a>
+
+sec sync DB_PW,API_KEY ssh://deploy@hetzner
+sec sync DB_PW docker://api --install       # sec missing there: stream it in (no root)
+sec sync DB_PW --from ssh://hetzner
+sec sync DB_PW hz --dry                     # names + remote key fingerprint, sends nothing</pre>
+    <ul>
+      <li>The remote key is <b>pinned per target</b> on first contact. An agent may sync only to a
+        pinned key or one the owner saved with <code>sec target add NAME age1…</code>; first contact,
+        <code>--install</code> and <code>--repin</code> are owner-only. A pinned target whose key
+        changed is refused.</li>
+      <li><code>--install</code> detects <code>uname -sm</code>, streams a matching sec (checksum-verified)
+        into the remote user's <code>~/.local/bin</code> and runs <code>sec init</code> there.</li>
+      <li>Both sides write the audit log. Not covered by the Claude deny rules — it never shows a value.</li>
+    </ul>
 
     <h2 id="push">sec push</h2>
     <p>Put secrets where a program already reads them, and <b>remember it</b> — so <code>rotate</code>,

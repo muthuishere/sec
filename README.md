@@ -18,8 +18,11 @@ sec where APP_DB_PW                                        # the compromise-day 
 sec set TLS --from ./certs                                 # a whole file or folder (modes kept)
 sec push DB_PW,API_KEY ./app/.env                          # put it where the program reads it…
 sec push TLS ssh://hetzner/etc/myapp/certs                 # …a server, a volume, docker://ctr/path
-sec push DB_PW ssh://hetzner                               # another sec, live and kept in sync
-sec export --only DB_PW --for age1… --out x.sec            # another sec without ssh → sec import x.sec
+sec sync DB_PW,API_KEY ssh://hetzner                       # another sec: sealed for its key, nothing on disk
+sec sync DB_PW docker://api --install                      # …or a container / k8s://ns/pod; --install puts sec there
+sec sync DB_PW --from ssh://hetzner                        # …and back
+sec export --only DB_PW --for age1… --out x.sec            # another sec with no connection → sec import x.sec
+sec help move                                              # which of sync / push / export to use
 sec keys                                                   # what .env.example needs that the vault lacks
 sec logs DB_PW --since 7d                                  # what happened
 sec ok                                                     # check everything, re-push stale copies
@@ -72,6 +75,11 @@ sec init
 `sec skill install` symlinks `skills/sec` into `~/.claude/skills/` and `~/.agents/skills/` and merges
 `Read(~/.config/sec/**)`, `Read(**/.env*)`, `Bash(sec get:*)`, `Bash(sec export:*)` into
 `~/.claude/settings.json` `permissions.deny` — so the harness, not the model, refuses.
+`sec sync` is deliberately not denied: it never shows a value, only the remote vault can open what
+it sends, and its own trust check (below) gates it.
+
+Every command has `sec help CMD` / `sec CMD --help` — syntax, examples, owner-only flags, what to
+run next — and a wrong usage prints the closest correct command.
 
 ## Model
 
@@ -110,6 +118,16 @@ sec init
   from asking the keyring — that exposure is identical to a 0600 file.
 - **Owner vs agent**: a TTY on stdin or `SEC_OWNER=1` is the owner. `get --print`, `export`,
   `--allow-output-only` need it. Agent harnesses run with a piped stdin, so they never have it.
+- **`sec sync`**: one transport — run a command there with stdin piped (`ssh host`,
+  `docker|podman exec -i ctr`, `kubectl exec -i [--context] [-n] pod [-c] --`). `sec id` there
+  names the remote key; values are sealed for it in memory and streamed into `sec import -`;
+  `--from` runs `sec export --for <this vault> --out -` there. The remote key is TOFU-pinned per
+  target (`known_secs.json`): an agent may sync only to a pinned or saved (`sec target add NAME
+  age1…`) key, first contact is the owner's, a changed key is refused until the owner `--repin`s.
+  `--install` (owner) streams a checksum-verified binary for the remote `uname -sm` into the
+  remote user's `~/.local/bin` — never root — and runs `sec init` there. Both sides audit.
+- **No prompts, ever**: sec never triggers an OS dialog — with no login keychain (a moved
+  `HOME`, a sandbox) the keyring is simply not used.
 - **`sec agent` needs a real terminal.** It owns the pty, so with no tty there is no keyboard to
   filter and it refuses rather than pretending. That also means the interactive check is the one
   thing a CI run cannot cover — the rewrite is proven instead by the headless pty harness in

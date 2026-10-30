@@ -31,7 +31,7 @@ func init() {
 	register("sync", "sync NAME[,NAME] WHERE | --from WHERE — move secrets to/from another sec (ssh://, docker://, k8s://), sealed for its key; no temp files, no values shown", cmdSync)
 }
 
-const syncUsage = `usage: sec sync NAME[,NAME] WHERE [--dry] [--remote-sec sec]
+const syncUsage = `usage: sec sync NAME[,NAME] WHERE [--dry] [--install] [--repin] [--remote-sec sec]
        sec sync NAME[,NAME] --from WHERE [--dry]
 
 WHERE is another machine/container running sec, or a saved target:
