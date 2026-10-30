@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"secure-agent/internal/place"
 	"secure-agent/internal/store"
 )
 
@@ -98,7 +99,7 @@ func TestTransportFor(t *testing.T) {
 			t.Errorf("%s: got %q want %q", in, got, want)
 		}
 	}
-	for _, bad := range []string{"./local", "ssh://h/etc/x", "k8s://a/b/c/d/e"} {
+	for _, bad := range []string{"./local", "ssh://h/etc/x", "k8s://a/b/c/d/e", "ssh://web+docker://api/run/x", "ssh://web+ftp://x"} {
 		if _, err := transportFor(s, bad); err == nil {
 			t.Errorf("%s must be refused", bad)
 		}
@@ -136,6 +137,7 @@ var shims = map[string]string{
 	"ssh": `while [ "$1" = -p ]; do shift 2; done; shift; exec sh -c "$*"`,
 	// docker exec -i CTR CMD…
 	"docker": `shift 3; exec "$@"`,
+	"podman": `shift 3; exec "$@"`,
 	// kubectl exec -i … -- CMD…
 	"kubectl": `while [ "$1" != -- ]; do shift; done; shift; exec "$@"`,
 }
@@ -183,8 +185,9 @@ func (e *e2e) run(asOwner bool, args ...string) string {
 }
 
 func TestSyncE2EAllTransports(t *testing.T) {
-	for _, where := range []string{"ssh://remote", "docker://ctr", "k8s://ctx/ns/pod/c"} {
-		t.Run(strings.SplitN(where, ":", 2)[0], func(t *testing.T) {
+	for _, where := range []string{"ssh://remote", "docker://ctr", "podman://ctr", "k8s://ctx/ns/pod/c",
+		"ssh://web+docker://api", "ssh://web+podman://api", "ssh://web+k8s://ns/pod/c", "ssh://bastion+ssh://db+docker://pg"} {
+		t.Run(strings.NewReplacer("://", "-", "/", "-", "+", "_").Replace(where), func(t *testing.T) {
 			e := newE2E(t)
 			if _, err := e.runAt(e.local, true, "throwaway-123", "set", "SYNC_TEST"); err != nil {
 				t.Fatal(err)
@@ -307,4 +310,116 @@ func TestSyncDockerInstallReal(t *testing.T) {
 		t.Fatalf("container audit: %s", l)
 	}
 	t.Logf("container audit:\n%s", l)
+
+	// ssh in, then into a container on that host: ssh://host+docker://ctr
+	ctr2 := ctr + "-b"
+	if out, err := exec.Command("docker", "run", "-d", "--name", ctr2, "debian:stable-slim", "sleep", "600").CombinedOutput(); err != nil {
+		t.Skipf("docker run: %v %s", err, out)
+	}
+	defer exec.Command("docker", "rm", "-f", ctr2).Run()
+	shim := t.TempDir()
+	os.WriteFile(filepath.Join(shim, "ssh"), []byte("#!/bin/sh\nshift\nexec sh -c \"$*\"\n"), 0o755)
+	cmd := exec.Command(filepath.Join(bin, "sec"), "sync", "SYNC_TEST", "ssh://dockerhost+docker://"+ctr2, "--install")
+	cmd.Dir, _ = filepath.Abs("../..")
+	cmd.Env = append(os.Environ(), "PATH="+shim+":"+os.Getenv("PATH"), "SEC_HOME="+local, "SEC_OWNER=1", "SEC_HEADLESS=1")
+	chained, err := cmd.CombinedOutput()
+	t.Logf("$ sec sync SYNC_TEST ssh://dockerhost+docker://%s --install\n%s", ctr2, chained)
+	if err != nil || !strings.Contains(string(chained), "installed sec") || !strings.Contains(string(chained), "SYNC_TEST stored (v1)") {
+		t.Fatal(err)
+	}
+	v, _ = exec.Command("docker", "exec", "-e", "SEC_OWNER=1", ctr2, "/root/.local/bin/sec", "get", "SYNC_TEST", "--print").CombinedOutput()
+	if strings.TrimSpace(string(v)) != "throwaway-docker-789" {
+		t.Fatalf("chained container value %q", v)
+	}
+}
+
+func TestCommandQuotesPerSSHHop(t *testing.T) {
+	via := []string{"ssh", "b", place.Hop, "ssh", "db", place.Hop, "docker", "exec", "-i", "pg"}
+	got := place.Command(via, []string{"sh", "-c", "echo 'a b'"})
+	// the first ssh gets one shell line; evaluating it once must leave the
+	// second ssh with a line that, evaluated again, yields the original argv
+	first := strings.Join(got[2:], " ")
+	out, err := exec.Command("sh", "-c", "set -- "+first+`; shift 2; printf '%s\n' "$*"`).Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	out2, err := exec.Command("sh", "-c", "set -- "+strings.TrimSpace(string(out))+`; printf '%s|' "$@"`).Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(out2) != "docker|exec|-i|pg|sh|-c|echo 'a b'|" {
+		t.Fatalf("argv after two ssh hops: %q", out2)
+	}
+}
+
+// Windows over ssh: no POSIX sh there, PowerShell only. The far end is a
+// real pwsh (Linux container) with LOCALAPPDATA/PROCESSOR_ARCHITECTURE set,
+// so the detect / install / checksum / PATH / owner-env scripts run for real.
+func TestSyncWindowsInstallViaPowerShell(t *testing.T) {
+	if os.Getenv("SEC_DOCKER_TEST") == "" {
+		t.Skip("set SEC_DOCKER_TEST=1 (needs docker + mcr.microsoft.com/dotnet/sdk:8.0 for pwsh)")
+	}
+	arch, err := exec.Command("docker", "info", "--format", "{{.Architecture}}").Output()
+	if err != nil {
+		t.Skip("no docker")
+	}
+	goarch, winArch := "amd64", "AMD64"
+	if strings.Contains(string(arch), "aarch64") || strings.Contains(string(arch), "arm64") {
+		goarch, winArch = "arm64", "ARM64"
+	}
+	ctr := "sec-win-test-" + filepath.Base(t.TempDir())
+	if out, err := exec.Command("docker", "run", "-d", "--name", ctr, "-e", "LOCALAPPDATA=/root/AppData/Local",
+		"-e", "PROCESSOR_ARCHITECTURE="+winArch, "mcr.microsoft.com/dotnet/sdk:8.0", "sleep", "600").CombinedOutput(); err != nil {
+		t.Skipf("docker run: %v %s", err, out)
+	}
+	defer exec.Command("docker", "rm", "-f", ctr).Run()
+
+	// SEC_DIST/sec-windows-ARCH is a linux build so it can run in the container
+	dist := t.TempDir()
+	b := exec.Command("go", "build", "-o", filepath.Join(dist, "sec-windows-"+goarch), "../../cmd/sec")
+	b.Env = append(os.Environ(), "CGO_ENABLED=0", "GOOS=linux", "GOARCH="+goarch)
+	if out, err := b.CombinedOutput(); err != nil {
+		t.Fatalf("%v %s", err, out)
+	}
+	bin := buildSec(t)
+	shim := t.TempDir()
+	os.WriteFile(filepath.Join(shim, "ssh"), []byte(`#!/bin/sh
+shift   # host
+line="$*"
+case "$line" in
+  sh\ *|uname*) echo "'sh' is not recognized as an internal or external command" >&2; exit 1 ;;
+  powershell\ *) shift; exec docker exec -i "$WIN_CTR" pwsh "$@" ;;
+  *) exec docker exec -i "$WIN_CTR" sh -c "$line" ;;   # cmd.exe running a path
+esac
+`), 0o755)
+	local := t.TempDir()
+	run := func(stdin string, args ...string) (string, error) {
+		cmd := exec.Command(filepath.Join(bin, "sec"), args...)
+		cmd.Env = append(os.Environ(), "PATH="+shim+":"+os.Getenv("PATH"), "SEC_HOME="+local, "SEC_OWNER=1",
+			"SEC_HEADLESS=1", "SEC_DIST="+dist, "WIN_CTR="+ctr)
+		cmd.Stdin = strings.NewReader(stdin)
+		out, err := cmd.CombinedOutput()
+		t.Logf("$ sec %s\n%s", strings.Join(args, " "), out)
+		return string(out), err
+	}
+	run("", "init", "--backend", "file")
+	run("throwaway-win-321", "set", "SYNC_TEST")
+	if out, _ := run("", "sync", "SYNC_TEST", "ssh://win", "--dry"); !strings.Contains(out, "sec not found on win (windows/"+goarch+")") || !strings.Contains(out, "/root/AppData/Local/Programs/sec") {
+		t.Fatal(out)
+	}
+	out, err := run("", "sync", "SYNC_TEST", "ssh://win", "--install")
+	if err != nil || !strings.Contains(out, "installed sec (windows/"+goarch) || !strings.Contains(out, "SYNC_TEST stored (v1)") {
+		t.Fatalf("%v %s", err, out)
+	}
+	exe := "/root/AppData/Local/Programs/sec/sec.exe"
+	if v, _ := exec.Command("docker", "exec", "-e", "SEC_OWNER=1", ctr, exe, "get", "SYNC_TEST", "--print").CombinedOutput(); strings.TrimSpace(string(v)) != "throwaway-win-321" {
+		t.Fatalf("value there %q", v)
+	}
+	exec.Command("docker", "exec", "-i", "-e", "SEC_OWNER=1", ctr, "sh", "-c", "printf back-654 | "+exe+" set SYNC_TEST").Run()
+	if out, err := run("", "sync", "SYNC_TEST", "--from", "ssh://win"); err != nil || !strings.Contains(out, "SYNC_TEST stored (v2)") {
+		t.Fatalf("pull: %v %s", err, out)
+	}
+	if v, _ := run("", "get", "SYNC_TEST", "--print"); strings.TrimSpace(v) != "back-654" {
+		t.Fatalf("pulled %q", v)
+	}
 }

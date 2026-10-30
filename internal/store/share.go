@@ -48,6 +48,7 @@ func Seal(recipient string, items []SharedItem) ([]byte, error) {
 
 // Open decrypts a share bundle addressed to this vault's key.
 func (s *Store) Open(bundle []byte) ([]SharedItem, error) {
+	bundle = bytes.ReplaceAll(bundle, []byte("\r\n"), []byte("\n")) // through PowerShell / Windows pipes
 	var src io.Reader = bytes.NewReader(bundle)
 	if bytes.HasPrefix(bytes.TrimSpace(bundle), []byte("-----BEGIN AGE")) {
 		src = armor.NewReader(bytes.NewReader(bytes.TrimSpace(bundle)))

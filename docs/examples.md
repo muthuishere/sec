@@ -65,6 +65,7 @@ Three ways (`sec help move` says which):
 sec sync DB_PW,TLS ssh://deploy@hetzner  # first contact (owner) pins hetzner's sec key
 sec sync DB_PW docker://api --install    # no sec in the container yet: streams it (~/.local/bin)
 sec sync DB_PW k8s://prod/api-7d9f/app   # [context/]namespace/pod[/container]
+sec sync DB_PW ssh://web+docker://api    # ssh in, then into a container on it
 sec sync DB_PW --from ssh://hetzner      # the other way
 sec sync DB_PW hz --dry                  # names + remote key fingerprint, sends nothing
 

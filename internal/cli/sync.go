@@ -3,16 +3,18 @@ package cli
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"unicode/utf16"
 
 	"secure-agent/internal/owner"
+	"secure-agent/internal/place"
 	"secure-agent/internal/store"
 )
 
@@ -39,6 +41,12 @@ WHERE is another machine/container running sec, or a saved target:
   docker://ctr   podman://ctr        docker exec -i ctr CMD
   k8s://pod  k8s://ns/pod[/container]  k8s://context/ns/pod/[container]
                                      kubectl exec -i [--context] [-n] pod [-c] -- CMD
+  ssh://web+docker://api             hops chain with +: ssh in, then into a container
+  ssh://web+k8s://ns/pod  ssh://bastion+ssh://db+podman://pg
+
+The far end may be Linux, macOS, FreeBSD or Windows (PowerShell over ssh).
+--install puts sec in that user's own folder (~/.local/bin, %LOCALAPPDATA%\Programs\sec)
+— never root, sudo or Administrator.
 
   to:    'sec id' there → seal for that key in memory → 'sec import -' there
   from:  'sec export --for <this vault> --out -' there → sec import here
@@ -58,11 +66,11 @@ func cmdSync(args []string) error {
 		return err
 	}
 	if (*from == "" && len(rest) != 2) || (*from != "" && len(rest) != 1) {
-		return fmt.Errorf(syncUsage)
+		return fmt.Errorf("%s", syncUsage)
 	}
 	names := splitList(rest[0])
 	if len(names) == 0 {
-		return fmt.Errorf(syncUsage)
+		return fmt.Errorf("%s", syncUsage)
 	}
 	for _, n := range names {
 		if err := store.ValidName(n); err != nil {
@@ -81,7 +89,7 @@ func cmdSync(args []string) error {
 	if err != nil {
 		return err
 	}
-	via, host := t.via, t.label
+	host := t.label
 	if *from == "" {
 		for _, n := range names {
 			if _, err := s.Meta(n); err != nil {
@@ -90,13 +98,13 @@ func cmdSync(args []string) error {
 		}
 	}
 
-	out, err := remoteRun(via, nil, *remoteSec, "id")
+	out, err := t.sec(nil, *remoteSec, "id")
 	if err != nil {
 		var done bool
-		if done, err = ensureRemoteSec(s, t, remoteSec, *install, *dry); err != nil || done {
+		if done, err = ensureRemoteSec(s, &t, remoteSec, *install, *dry); err != nil || done {
 			return err
 		}
-		if out, err = remoteRun(via, nil, *remoteSec, "id"); err != nil {
+		if out, err = t.sec(nil, *remoteSec, "id"); err != nil {
 			return fmt.Errorf("%s: %s id: %w", host, *remoteSec, err)
 		}
 	}
@@ -133,7 +141,10 @@ func cmdSync(args []string) error {
 	}
 
 	if *from != "" {
-		sealed, err := remoteRun(via, nil, "env", "SEC_OWNER=1", *remoteSec, "export", "--for", s.PublicKey(), "--only", strings.Join(names, ","), "--out", "-")
+		if !t.windows && t.ssh {
+			remotePlatform(&t) // a Windows box over ssh needs PowerShell for the owner env
+		}
+		sealed, err := t.runSec(nil, true, *remoteSec, "export", "--for", s.PublicKey(), "--only", strings.Join(names, ","), "--out", "-")
 		if err != nil {
 			return fmt.Errorf("remote export on %s: %w", host, err)
 		}
@@ -141,14 +152,14 @@ func cmdSync(args []string) error {
 			return fmt.Errorf("%s did not send a sealed export", host)
 		}
 		s.Audit("sync.pull", owner.Agent(), names, map[string]string{"host": host, "key": key})
-		return importSealed(s, "ssh://"+host, sealed)
+		return importSealed(s, host, sealed)
 	}
 
 	sealed, err := sealNames(s, names, key)
 	if err != nil {
 		return err
 	}
-	res, err := remoteRun(via, sealed, *remoteSec, "import", "-")
+	res, err := t.sec(sealed, *remoteSec, "import", "-")
 	os.Stdout.Write(res) // the remote prints only "✓ NAME stored (vN)"
 	if err != nil {
 		s.Audit("sync.push", owner.Agent(), names, map[string]string{"host": host, "key": key, "error": err.Error()})
@@ -208,17 +219,53 @@ func fingerprint(key string) string {
 // transport runs a command on the other end with stdin piped in. ssh joins
 // its argv into one remote shell line; exec transports take argv as is.
 type transport struct {
-	via   []string
-	label string // what the remote key is pinned under
-	ssh   bool
+	via     []string
+	label   string // what the remote key is pinned under
+	ssh     bool
+	windows bool // the far end is Windows: PowerShell instead of sh
 }
 
-// sh runs a shell script on the other end.
-func (t transport) sh(stdin []byte, script string) ([]byte, error) {
-	if t.ssh {
-		return remoteRun(t.via, stdin, script)
+// sh runs a POSIX shell script on the other end; args become $1, $2, ….
+func (t *transport) sh(stdin []byte, script string, args ...string) ([]byte, error) {
+	return remoteRun(t.via, stdin, append([]string{"sh", "-c", script, "sh"}, args...)...)
+}
+
+// ps runs a PowerShell script on a Windows far end. -EncodedCommand is
+// base64 UTF-16LE, so no shell on the way (cmd.exe, ssh) can mangle it.
+func (t *transport) ps(stdin []byte, script string) ([]byte, error) {
+	// errors as one plain line, not CLIXML
+	script = "try {\n" + script + "\n} catch { [Console]::Error.WriteLine($_.Exception.Message); exit 1 }"
+	u := utf16.Encode([]rune(script))
+	b := make([]byte, 2*len(u))
+	for i, c := range u {
+		b[2*i], b[2*i+1] = byte(c), byte(c>>8)
 	}
-	return remoteRun(t.via, stdin, "sh", "-c", script)
+	return remoteRun(t.via, stdin, "powershell", "-NoProfile", "-NonInteractive", "-EncodedCommand", base64.StdEncoding.EncodeToString(b))
+}
+
+// sec runs the remote sec; asOwner is for --from, whose export is sealed for
+// this vault's key (env on POSIX, $env: on Windows).
+func (t *transport) sec(stdin []byte, bin string, args ...string) ([]byte, error) {
+	return t.runSec(stdin, false, bin, args...)
+}
+
+func (t *transport) runSec(stdin []byte, asOwner bool, bin string, args ...string) ([]byte, error) {
+	if !t.windows {
+		argv := append([]string{bin}, args...)
+		if asOwner {
+			argv = append([]string{"env", "SEC_OWNER=1"}, argv...)
+		}
+		return remoteRun(t.via, stdin, argv...)
+	}
+	q := []string{"&", "'" + bin + "'"}
+	for _, a := range args {
+		q = append(q, "'"+strings.ReplaceAll(a, "'", "''")+"'")
+	}
+	script := strings.Join(q, " ") + "; exit $LASTEXITCODE"
+	if asOwner {
+		script = "$env:SEC_OWNER = '1'; " + script
+	}
+	return t.ps(stdin, script)
 }
 
 // transportFor resolves WHERE (a URL or saved target) to the argv that runs
@@ -230,65 +277,39 @@ func (t transport) sh(stdin []byte, script string) ([]byte, error) {
 //	k8s://pod                                      kubectl exec -i pod -- CMD
 //	k8s://ns/pod  k8s://ns/pod/container           … -n ns pod -c container
 //	k8s://context/ns/pod/[container]               … --context context
+//	ssh://web+docker://api  ssh://bastion+ssh://db+k8s://ns/pod
+//	                                               hops chained, innermost last
 func transportFor(s *store.Store, where string) (transport, error) {
 	if t, ok := loadTargets(s)[where]; ok {
 		where = t
 	}
-	u, err := url.Parse(where)
-	if err != nil || !strings.Contains(where, "://") || u.Host == "" {
-		return transport{}, fmt.Errorf("sec sync needs ssh://host, docker://ctr, podman://ctr or k8s://[context/]ns/pod[/container] (or a saved target), got %q", where)
+	hops := splitHops(where)
+	var via []string
+	for i, h := range hops {
+		v, path, err := hopVia(h, true)
+		if err != nil {
+			return transport{}, err
+		}
+		if path != "" && path != "/" {
+			return transport{}, fmt.Errorf("sec sync goes into the remote vault — drop the path (%s); for a file use sec push", path)
+		}
+		if i > 0 {
+			via = append(via, place.Hop)
+		}
+		via = append(via, v...)
 	}
-	if u.Scheme == "k8s" {
-		seg := append([]string{u.Host}, strings.Split(strings.Trim(u.Path, "/"), "/")...)
-		if strings.HasSuffix(u.Path, "/") && len(seg) == 3 {
-			seg = append(seg, "") // k8s://ctx/ns/pod/ — context, no container
-		}
-		if seg[len(seg)-1] == "" && len(seg) != 4 {
-			seg = seg[:len(seg)-1]
-		}
-		var ctx, ns, pod, ctr string
-		switch len(seg) {
-		case 1:
-			pod = seg[0]
-		case 2:
-			ns, pod = seg[0], seg[1]
-		case 3:
-			ns, pod, ctr = seg[0], seg[1], seg[2]
-		case 4:
-			ctx, ns, pod, ctr = seg[0], seg[1], seg[2], seg[3]
-		default:
-			return transport{}, fmt.Errorf("%s: want k8s://[context/]namespace/pod[/container]", where)
-		}
-		via := []string{"kubectl", "exec", "-i"}
-		if ctx != "" {
-			via = append(via, "--context", ctx)
-		}
-		if ns != "" {
-			via = append(via, "-n", ns)
-		}
-		via = append(via, pod)
-		if ctr != "" {
-			via = append(via, "-c", ctr)
-		}
-		return transport{via: append(via, "--"), label: strings.TrimSuffix(where, "/")}, nil
+	label := strings.TrimSuffix(where, "/")
+	if len(hops) == 1 && via[0] == "ssh" {
+		label = via[len(via)-1] // a plain ssh target is pinned by host
 	}
-	d, err := resolveWhere(s, where)
-	if err != nil {
-		return transport{}, err
-	}
-	if d.path != "" && d.path != "/" {
-		return transport{}, fmt.Errorf("sec sync goes into the remote vault — drop the path (%s); for a file use sec push", d.path)
-	}
-	if u.Scheme == "ssh" {
-		return transport{via: d.via, label: d.via[len(d.via)-1], ssh: true}, nil // pinned by host
-	}
-	return transport{via: d.via, label: u.Scheme + "://" + u.Host}, nil
+	return transport{via: via, label: label, ssh: via[0] == "ssh"}, nil
 }
 
 // remoteRun runs argv on the other end of via, feeding stdin. Remote stderr
 // (never values) is folded into the error instead of interleaving.
 func remoteRun(via []string, stdin []byte, argv ...string) ([]byte, error) {
-	cmd := exec.Command(via[0], append(append([]string{}, via[1:]...), argv...)...)
+	full := place.Command(via, argv)
+	cmd := exec.Command(full[0], full[1:]...)
 	if stdin != nil {
 		cmd.Stdin = bytes.NewReader(stdin)
 	}

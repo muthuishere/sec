@@ -216,6 +216,8 @@ WHERE
   ssh://[user@]host[:port]             ssh host CMD
   docker://ctr   podman://ctr          docker exec -i ctr CMD
   k8s://pod  k8s://ns/pod[/container]  k8s://context/ns/pod/[container]
+  ssh://web+docker://api               hops chain with +: ssh in, then into a container
+  ssh://bastion+ssh://db+k8s://ns/pod  through a jump host, into a pod
   hz                                   a saved <a href="#target">target</a>
 
 sec sync DB_PW,API_KEY ssh://deploy@hetzner
@@ -227,8 +229,9 @@ sec sync DB_PW hz --dry                     # names + remote key fingerprint, se
         pinned key or one the owner saved with <code>sec target add NAME age1…</code>; first contact,
         <code>--install</code> and <code>--repin</code> are owner-only. A pinned target whose key
         changed is refused.</li>
-      <li><code>--install</code> detects <code>uname -sm</code>, streams a matching sec (checksum-verified)
-        into the remote user's <code>~/.local/bin</code> and runs <code>sec init</code> there.</li>
+      <li><code>--install</code> detects the far end (<code>uname -sm</code>, or PowerShell on Windows), streams
+        a matching sec (checksum-verified) into that user's own folder — <code>~/.local/bin</code> or
+        <code>%LOCALAPPDATA%\Programs\sec</code> — never root or Administrator, and runs <code>sec init</code>.</li>
       <li>Both sides write the audit log. Not covered by the Claude deny rules — it never shows a value.</li>
     </ul>
 

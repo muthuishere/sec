@@ -107,8 +107,8 @@ var docs = map[string]helpDoc{
 
 	"sync": {group: "move",
 		syntax:   []string{"sec sync NAME[,NAME] WHERE [--dry] [--install] [--repin] [--remote-sec PATH]", "sec sync NAME[,NAME] --from WHERE [--dry]"},
-		examples: []string{"sec sync DB_PW,API_KEY ssh://deploy@db.example.com", "sec sync DB_PW docker://api --install", "sec sync DB_PW k8s://prod/api-7d9f/app", "sec sync DB_PW --from ssh://db --dry"},
-		owner:    "agents may sync to a target whose key is already pinned or saved (sec target add NAME age1…). First contact, --install and --repin are owner-only: they decide which machine is trusted.",
+		examples: []string{"sec sync DB_PW,API_KEY ssh://deploy@db.example.com", "sec sync DB_PW docker://api --install", "sec sync DB_PW k8s://prod/api-7d9f/app", "sec sync DB_PW ssh://web+docker://api   # ssh in, then into a container", "sec sync DB_PW --from ssh://db --dry"},
+		owner:    "agents may sync to a target whose key is already pinned or saved (sec target add NAME age1…). First contact, --install and --repin are owner-only: they decide which machine is trusted. --install never needs admin: sec goes into ~/.local/bin (or %LOCALAPPDATA%\\Programs\\sec on Windows).",
 		next:     "sec target add db ssh://db  ·  sec help move"},
 	"push": {group: "move",
 		syntax:   []string{"sec push NAME[,NAME] WHERE [--as NEW] [--mode 0600] [--once]", "sec push NAME -- CMD-ON-THE-OTHER-END [--path P]"},
@@ -176,11 +176,14 @@ const moveGuide = `sec help move — getting secrets onto another machine
       sec sync DB_PW docker://api                    docker exec -i api …
       sec sync DB_PW k8s://[context/]ns/pod[/container]
       sec sync DB_PW --from ssh://db                 the other way
-      sec sync DB_PW docker://fresh --install        no sec there yet: streams it (no root)
+      sec sync DB_PW ssh://web+docker://api          ssh in, then into a container (+podman://, +k8s://)
+      sec sync DB_PW ssh://bastion+ssh://db          through a jump host
+      sec sync DB_PW docker://fresh --install        no sec there yet: streams it (no admin, any OS)
     Nothing on disk, no value on screen; the remote key is pinned per target.
 
   A program there reads a FILE / .env / folder, not a vault  →  sec push
       sec push TLS ssh://web/etc/app/certs           recorded: sec rotate re-pushes it
+      sec push TLS ssh://web+docker://api/run/certs  same hops; the path is on the last one
       sec push DB_PW docker://api/run/secrets/db_pw
 
   No connection at all (air gap, email, USB)  →  sec export --for + sec import

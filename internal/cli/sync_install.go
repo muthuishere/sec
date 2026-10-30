@@ -17,49 +17,42 @@ import (
 
 // ensureRemoteSec runs when `sec id` failed on the other end: sec is missing,
 // or present with no vault. With --install it streams a binary matching the
-// remote `uname -sm` over the same transport (checksum-verified), runs
-// `sec init` if needed and points *remoteSec at it. done=true means a --dry
-// plan was printed and the sync should stop.
-func ensureRemoteSec(s *store.Store, t transport, remoteSec *string, install, dry bool) (done bool, err error) {
-	present := false
-	if _, err := t.sh(nil, "command -v "+*remoteSec+" >/dev/null 2>&1 || test -x "+*remoteSec); err == nil {
-		present = true
+// remote OS/arch over the same transport (checksum-verified) into the remote
+// user's own folder — never root, never Administrator — runs `sec init` if
+// needed and points *remoteSec at it. done=true means a --dry plan was
+// printed and the sync should stop.
+func ensureRemoteSec(s *store.Store, t *transport, remoteSec *string, install, dry bool) (done bool, err error) {
+	goos, goarch, err := remotePlatform(t)
+	if err != nil {
+		return false, err
 	}
-	if !present && *remoteSec == "sec" {
-		// a non-login shell often lacks ~/.local/bin on PATH
-		if out, err := t.sh(nil, `test -x "$HOME/.local/bin/sec" && echo "$HOME/.local/bin/sec"`); err == nil {
-			*remoteSec, present = strings.TrimSpace(string(out)), true
-		}
+	present := false
+	if found, err := t.findSec(*remoteSec); err == nil {
+		*remoteSec, present = found, true
 	}
 	if present {
-		if _, err := remoteRun(t.via, nil, *remoteSec, "id"); err == nil {
+		if _, err := t.sec(nil, *remoteSec, "id"); err == nil {
 			return false, nil
 		}
 		if !install && !dry {
 			return false, fmt.Errorf("%s: sec is there but has no vault — re-run with --install to sec init it", t.label)
 		}
 	}
-	goos, goarch, err := remotePlatform(t)
+	dir, err := t.installDir()
 	if err != nil {
 		return false, err
 	}
-	// always the remote user's own ~/.local/bin: no root, no sudo, no prompt
-	home, err := t.sh(nil, `printf %s "$HOME"`)
-	if err != nil || len(home) == 0 {
-		return false, fmt.Errorf("%s: no $HOME to install into: %v", t.label, err)
-	}
-	dir := strings.TrimSpace(string(home)) + "/.local/bin"
 	if dry {
 		if present {
 			fmt.Printf("dry run, nothing sent\n  %s has sec but no vault — --install would run: sec init\n", t.label)
 		} else {
-			fmt.Printf("dry run, nothing sent\n  sec not found on %s (%s/%s)\n  --install would stream %s → %s/sec (0755, sha256-checked), then sec init\n",
+			fmt.Printf("dry run, nothing sent\n  sec not found on %s (%s/%s)\n  --install would stream %s → %s (sha256-checked, no admin), then sec init\n",
 				t.label, goos, goarch, describeBinary(goos, goarch), dir)
 		}
 		return true, nil
 	}
 	if !install {
-		return false, fmt.Errorf("sec not found on %s (%s/%s). Re-run with --install to stream it there over the same transport (owner-only), or install it yourself", t.label, goos, goarch)
+		return false, fmt.Errorf("sec not found on %s (%s/%s). Re-run with --install to stream it into %s over the same transport (owner-only, no admin), or install it yourself", t.label, goos, goarch, dir)
 	}
 	if err := requireOwner("sync --install"); err != nil {
 		return false, err
@@ -77,39 +70,103 @@ func ensureRemoteSec(s *store.Store, t transport, remoteSec *string, install, dr
 		}
 		h := sha256.Sum256(b)
 		sum = hex.EncodeToString(h[:])
-		dst := dir + "/sec"
-		script := fmt.Sprintf(`set -e; d='%[1]s'; mkdir -p "$d"; cat > "$d/.sec.new"; `+
-			`got=$( (sha256sum "$d/.sec.new" 2>/dev/null || shasum -a 256 "$d/.sec.new") | cut -d' ' -f1); `+
-			`if [ "$got" != %[2]s ]; then rm -f "$d/.sec.new"; echo "checksum mismatch: $got" >&2; exit 1; fi; `+
-			`chmod 0755 "$d/.sec.new"; mv -f "$d/.sec.new" "$d/sec"`, dir, sum)
-		if _, err := t.sh(b, script); err != nil {
+		dst, err := t.writeBinary(dir, b, sum)
+		if err != nil {
 			s.Audit("sync.install", owner.Agent(), nil, map[string]string{"host": t.label, "sha256": sum, "error": err.Error()})
 			return false, fmt.Errorf("install on %s: %w", t.label, err)
 		}
 		*remoteSec = dst
 		fmt.Printf("✓ installed sec (%s/%s, sha256 %s…) → %s:%s\n", goos, goarch, sum[:12], t.label, dst)
 	}
-	if _, err := remoteRun(t.via, nil, *remoteSec, "id"); err != nil {
-		if out, err := remoteRun(t.via, nil, *remoteSec, "init"); err != nil {
+	if _, err := t.sec(nil, *remoteSec, "id"); err != nil {
+		if _, err := t.sec(nil, *remoteSec, "init", "--backend", "file"); err != nil {
 			return false, fmt.Errorf("sec init on %s: %w", t.label, err)
-		} else if len(out) > 0 {
-			fmt.Printf("✓ sec init on %s\n", t.label)
 		}
+		fmt.Printf("✓ sec init on %s\n", t.label)
 	}
 	// the remote's own audit log records who installed it
-	if _, err := remoteRun(t.via, nil, *remoteSec, "id", "--record-install", "sha256="+sum+",by="+owner.Agent()); err != nil {
+	if _, err := t.sec(nil, *remoteSec, "id", "--record-install", "sha256="+sum+",by="+owner.Agent()); err != nil {
 		return false, err
 	}
 	s.Audit("sync.install", owner.Agent(), nil, map[string]string{"host": t.label, "sha256": sum, "path": *remoteSec, "os": goos, "arch": goarch})
 	return false, nil
 }
 
-func remotePlatform(t transport) (string, string, error) {
-	out, err := t.sh(nil, "uname -sm")
-	if err != nil {
-		return "", "", fmt.Errorf("%s: uname -sm: %w", t.label, err)
+// remotePlatform asks the other end what it is: `uname -sm` anywhere with a
+// POSIX shell, else PowerShell's PROCESSOR_ARCHITECTURE (Windows over ssh).
+func remotePlatform(t *transport) (string, string, error) {
+	// Git Bash / MSYS on Windows answers uname too (MINGW64_NT-…): that is
+	// still a Windows box, so it goes the PowerShell way.
+	if out, err := t.sh(nil, "uname -sm"); err == nil && !strings.ContainsAny(strings.ToUpper(string(out))[:1], "MC") {
+		return goPlatform(string(out))
 	}
-	return goPlatform(string(out))
+	out, err := t.ps(nil, "$env:PROCESSOR_ARCHITECTURE")
+	if err != nil {
+		return "", "", fmt.Errorf("%s: neither uname nor PowerShell answered: %w", t.label, err)
+	}
+	t.windows = true
+	switch strings.ToUpper(strings.TrimSpace(string(out))) {
+	case "AMD64":
+		return "windows", "amd64", nil
+	case "ARM64":
+		return "windows", "arm64", nil
+	}
+	return "", "", fmt.Errorf("no sec build for Windows %s", strings.TrimSpace(string(out)))
+}
+
+// findSec returns how to call sec there: as given if it runs, else the
+// user-folder install a non-login shell may not have on PATH.
+func (t *transport) findSec(given string) (string, error) {
+	if t.windows {
+		out, err := t.ps(nil, `$p = Join-Path $env:LOCALAPPDATA 'Programs\sec\sec.exe'
+if (Test-Path $p) { $p -replace '\\','/'; exit 0 }
+$c = Get-Command '`+given+`' -ErrorAction SilentlyContinue
+if ($c) { $c.Source -replace '\\','/'; exit 0 }
+exit 1`)
+		return strings.TrimSpace(string(out)), err
+	}
+	out, err := t.sh(nil, `if command -v "$1" >/dev/null 2>&1 || test -x "$1"; then echo "$1"; elif test -x "$HOME/.local/bin/sec"; then echo "$HOME/.local/bin/sec"; else exit 1; fi`, given)
+	return strings.TrimSpace(string(out)), err
+}
+
+// installDir is the remote user's own bin folder — no root, no Administrator.
+func (t *transport) installDir() (string, error) {
+	if t.windows {
+		out, err := t.ps(nil, `(Join-Path $env:LOCALAPPDATA 'Programs\sec') -replace '\\','/'`)
+		if err != nil {
+			return "", fmt.Errorf("%s: no LOCALAPPDATA: %w", t.label, err)
+		}
+		return strings.TrimSpace(string(out)), nil
+	}
+	home, err := t.sh(nil, `printf %s "$HOME"`)
+	if err != nil || len(home) == 0 {
+		return "", fmt.Errorf("%s: no $HOME to install into: %v", t.label, err)
+	}
+	return strings.TrimSpace(string(home)) + "/.local/bin", nil
+}
+
+// writeBinary streams b into dir, verifies its sha256 there and swaps it in.
+func (t *transport) writeBinary(dir string, b []byte, sum string) (string, error) {
+	if t.windows {
+		out, err := t.ps(b, `$ErrorActionPreference = 'Stop'
+$d = '`+dir+`'
+New-Item -ItemType Directory -Force $d | Out-Null
+$tmp = Join-Path $d 'sec.new.exe'
+$in = [Console]::OpenStandardInput(); $f = [IO.File]::Create($tmp); $in.CopyTo($f); $f.Close()
+$h = (Get-FileHash $tmp -Algorithm SHA256).Hash.ToLower()
+if ($h -ne '`+sum+`') { Remove-Item $tmp; throw "checksum mismatch: $h" }
+Move-Item -Force $tmp (Join-Path $d 'sec.exe')
+if ($IsLinux -or $IsMacOS) { chmod 0755 (Join-Path $d 'sec.exe') }  # pwsh as a Unix login shell
+$up = [Environment]::GetEnvironmentVariable('Path', 'User'); if ($null -eq $up) { $up = '' }
+if (($up -split ';') -notcontains $d.Replace('/', '\')) { [Environment]::SetEnvironmentVariable('Path', ($up.TrimEnd(';') + ';' + $d.Replace('/', '\')), 'User') }
+(Join-Path $d 'sec.exe') -replace '\\','/'`)
+		return strings.TrimSpace(string(out)), err
+	}
+	_, err := t.sh(b, `set -e; d="$1"; mkdir -p "$d"; cat > "$d/.sec.new"
+got=$( (sha256sum "$d/.sec.new" 2>/dev/null || shasum -a 256 "$d/.sec.new") | cut -d' ' -f1)
+if [ "$got" != "$2" ]; then rm -f "$d/.sec.new"; echo "checksum mismatch: $got" >&2; exit 1; fi
+chmod 0755 "$d/.sec.new"; mv -f "$d/.sec.new" "$d/sec"`, dir, sum)
+	return dir + "/sec", err
 }
 
 // goPlatform maps `uname -sm` to GOOS/GOARCH.

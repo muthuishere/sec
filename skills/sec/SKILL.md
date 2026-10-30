@@ -42,7 +42,8 @@ sec run STRIPE_KEY,DB_URL=DATABASE_URL -- go test ./...          # as env vars
 | user pasted a value in chat | `sec set NAME <<'EOF' … EOF`, then recommend `sec rotate NAME` |
 | a cert / key file / folder | `sec set NAME --from ./certs` |
 | a repo `.env` into the vault | `sec import production --tag <project>` |
-| **copy secrets to a server / container / pod running sec** | `sec sync A,B ssh://host` · `docker://ctr` · `k8s://[ctx/]ns/pod[/ctr]` |
+| **copy secrets to a server / container / pod running sec** | `sec sync A,B ssh://host` · `docker://ctr` · `podman://ctr` · `k8s://[ctx/]ns/pod[/ctr]` |
+| …a container / pod on a server | chain hops with `+`: `ssh://web+docker://api` · `ssh://web+k8s://ns/pod` · `ssh://bastion+ssh://db` |
 | pull secrets back from one | `sec sync A,B --from ssh://host` |
 | check before sending | `sec sync A,B WHERE --dry` (names + remote key fingerprint, sends nothing) |
 | a program there reads a file / .env / folder | `sec push NAME WHERE` (`./app/.env`, `ssh://h/etc/app/certs`, `docker://c/run/secrets`) |
@@ -71,7 +72,8 @@ Owner = a TTY on stdin or `SEC_OWNER=1`. Never set `SEC_OWNER` yourself.
 **sec sync trust:** the remote key is pinned per target (TOFU). First contact needs the owner
 (or the owner saves it: `sec target add db-key age1…`). If sync says **REMOTE KEY CHANGED**,
 stop and tell the owner — it may be an impersonated host; only they `--repin`. If it says
-**sec not found**, give the owner `sec sync … --install` (streams sec into `~/.local/bin`, no root).
+**sec not found**, give the owner `sec sync … --install`: it detects the OS (Linux, macOS, FreeBSD,
+Windows over ssh) and streams sec into that user's own folder — never root, sudo or Administrator.
 
 ## Claude harness deny rules
 

@@ -20,6 +20,7 @@ sec push DB_PW,API_KEY ./app/.env                          # put it where the pr
 sec push TLS ssh://hetzner/etc/myapp/certs                 # …a server, a volume, docker://ctr/path
 sec sync DB_PW,API_KEY ssh://hetzner                       # another sec: sealed for its key, nothing on disk
 sec sync DB_PW docker://api --install                      # …or a container / k8s://ns/pod; --install puts sec there
+sec sync DB_PW ssh://web+docker://api                      # ssh in, then into a container (+podman://, +k8s://)
 sec sync DB_PW --from ssh://hetzner                        # …and back
 sec export --only DB_PW --for age1… --out x.sec            # another sec with no connection → sec import x.sec
 sec help move                                              # which of sync / push / export to use
@@ -124,8 +125,12 @@ run next — and a wrong usage prints the closest correct command.
   `--from` runs `sec export --for <this vault> --out -` there. The remote key is TOFU-pinned per
   target (`known_secs.json`): an agent may sync only to a pinned or saved (`sec target add NAME
   age1…`) key, first contact is the owner's, a changed key is refused until the owner `--repin`s.
-  `--install` (owner) streams a checksum-verified binary for the remote `uname -sm` into the
-  remote user's `~/.local/bin` — never root — and runs `sec init` there. Both sides audit.
+  Hops chain with `+` (`ssh://web+docker://api`, `ssh://bastion+ssh://db+k8s://ns/pod`): one
+  builder, quoted once per ssh hop, used by both `sync` and `push`.
+  `--install` (owner) detects the far end (`uname -sm`, or PowerShell on Windows), streams a
+  checksum-verified binary into that user's own folder (`~/.local/bin`, or
+  `%LOCALAPPDATA%\Programs\sec` added to the user PATH) — never root, sudo or Administrator —
+  and runs `sec init` there. Both sides audit.
 - **No prompts, ever**: sec never triggers an OS dialog — with no login keychain (a moved
   `HOME`, a sandbox) the keyring is simply not used.
 - **`sec agent` needs a real terminal.** It owns the pty, so with no tty there is no keyboard to
