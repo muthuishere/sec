@@ -92,7 +92,30 @@ func KeyringCheck() error {
 	if !keyringIsLocal() {
 		return fmt.Errorf("Secret Service over DBus is not probed automatically on %s", runtimeGOOS)
 	}
+	if err := loginKeychainExists(); err != nil {
+		return err
+	}
 	return probeKeyring()
+}
+
+// loginKeychainExists stops macOS from showing its "A keychain cannot be
+// found" dialog: with HOME pointing anywhere but a real user home (tests,
+// sandboxes, sudo -H) Security.framework asks a human to create one. sec must
+// never cause an OS prompt, so no login keychain means no keyring.
+func loginKeychainExists() error {
+	if runtimeGOOS != "darwin" {
+		return nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("no home directory: %w", err)
+	}
+	for _, f := range []string{"login.keychain-db", "login.keychain"} {
+		if _, err := os.Stat(filepath.Join(home, "Library", "Keychains", f)); err == nil {
+			return nil
+		}
+	}
+	return fmt.Errorf("no login keychain under %s", home)
 }
 
 // keyringIsLocal reports whether this platform's credential store is a local
@@ -262,7 +285,9 @@ func (s *Store) IdentityInfo() IdentityInfo {
 		info.Note = m.Note
 	}
 	info.Headless, info.HeadlessWhy = Headless()
-	info.KeyringUsable = KeyringAvailable()
+	if info.Backend == BackendFile {
+		info.KeyringUsable = KeyringAvailable() // only the file backend reports it
+	}
 	return info
 }
 
