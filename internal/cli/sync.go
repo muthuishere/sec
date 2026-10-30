@@ -144,6 +144,13 @@ func cmdSync(args []string) error {
 		if !t.windows && t.ssh {
 			remotePlatform(&t) // a Windows box over ssh needs PowerShell for the owner env
 		}
+		if t.windows {
+			// PowerShell neither searches the current folder nor sees a PATH
+			// change made after this session started: call the install by path
+			if found, err := t.findSec(*remoteSec); err == nil {
+				*remoteSec = found
+			}
+		}
 		sealed, err := t.runSec(nil, true, *remoteSec, "export", "--for", s.PublicKey(), "--only", strings.Join(names, ","), "--out", "-")
 		if err != nil {
 			return fmt.Errorf("remote export on %s: %w", host, err)
@@ -234,7 +241,7 @@ func (t *transport) sh(stdin []byte, script string, args ...string) ([]byte, err
 // base64 UTF-16LE, so no shell on the way (cmd.exe, ssh) can mangle it.
 func (t *transport) ps(stdin []byte, script string) ([]byte, error) {
 	// errors as one plain line, not CLIXML
-	script = "try {\n" + script + "\n} catch { [Console]::Error.WriteLine($_.Exception.Message); exit 1 }"
+	script = "$ProgressPreference = 'SilentlyContinue'\ntry {\n" + script + "\n} catch { [Console]::Error.WriteLine($_.Exception.Message); exit 1 }"
 	u := utf16.Encode([]rune(script))
 	b := make([]byte, 2*len(u))
 	for i, c := range u {
