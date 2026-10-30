@@ -28,7 +28,7 @@ func cmdID(args []string) error {
 		return err
 	}
 	if *installed != "" {
-		s.Audit("installed", owner.Agent(), nil, map[string]string{"by": "sec sync --install", "detail": *installed})
+		s.Audit("installed", owner.Agent(), nil, map[string]string{"by": "sec sync --install / sec remote", "detail": *installed})
 	}
 	fmt.Println(s.PublicKey())
 	return nil
