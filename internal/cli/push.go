@@ -167,33 +167,108 @@ func resolveWhere(s *store.Store, where string) (destination, error) {
 	if !strings.Contains(where, "://") {
 		return destination{path: where}, nil
 	}
-	u, err := url.Parse(where)
-	if err != nil {
-		return destination{}, err
+	hops := splitHops(where)
+	var d destination
+	for i, h := range hops {
+		last := i == len(hops)-1
+		v, path, err := hopVia(h, !last) // a hop on the way in is ns/pod/ctr, not a path
+		if err != nil {
+			return destination{}, err
+		}
+		if !last && path != "" && path != "/" {
+			return destination{}, fmt.Errorf("%s: only the last hop takes a path", h)
+		}
+		if i > 0 {
+			d.via = append(d.via, place.Hop)
+		}
+		d.via = append(d.via, v...)
+		if last {
+			d.path = path
+		}
+	}
+	return d, nil
+}
+
+// splitHops cuts a chained WHERE at each "+scheme://":
+// ssh://web+docker://api/run/x → ssh://web, docker://api/run/x.
+func splitHops(where string) []string {
+	var hops []string
+	start := 0
+	for i := 0; i < len(where); i++ {
+		if where[i] != '+' {
+			continue
+		}
+		rest := where[i+1:]
+		if j := strings.Index(rest, "://"); j > 0 && strings.Trim(rest[:j], "abcdefghijklmnopqrstuvwxyz0123456789") == "" {
+			hops = append(hops, where[start:i])
+			start = i + 1
+		}
+	}
+	return append(hops, where[start:])
+}
+
+// hopVia turns one hop into the argv prefix that runs a command there, and
+// the path left over. k8s hops are k8s://pod/path for a file target, or with
+// rich=true k8s://[context/]ns/pod[/container] (a vault, or a hop on the way).
+func hopVia(hop string, rich bool) ([]string, string, error) {
+	u, err := url.Parse(hop)
+	if err != nil || !strings.Contains(hop, "://") {
+		return nil, "", fmt.Errorf("%q is not ssh://, docker://, podman:// or k8s://", hop)
 	}
 	host := u.Hostname()
 	if host == "" {
-		return destination{}, fmt.Errorf("%s: missing host/container name", where)
+		return nil, "", fmt.Errorf("%s: missing host/container name", hop)
 	}
-	d := destination{path: u.Path}
 	switch u.Scheme {
 	case "ssh":
-		d.via = []string{"ssh"}
+		via := []string{"ssh"}
 		if u.Port() != "" {
-			d.via = append(d.via, "-p", u.Port())
+			via = append(via, "-p", u.Port())
 		}
 		if u.User != nil {
 			host = u.User.Username() + "@" + host
 		}
-		d.via = append(d.via, host)
+		return append(via, host), u.Path, nil
 	case "docker", "podman":
-		d.via = []string{u.Scheme, "exec", "-i", host}
+		return []string{u.Scheme, "exec", "-i", host}, u.Path, nil
 	case "k8s":
-		d.via = []string{"kubectl", "exec", "-i", host, "--"}
-	default:
-		return destination{}, fmt.Errorf("unknown target scheme %q (ssh, docker, podman, k8s)", u.Scheme)
+		if !rich {
+			return []string{"kubectl", "exec", "-i", host, "--"}, u.Path, nil
+		}
+		seg := append([]string{u.Host}, strings.Split(strings.Trim(u.Path, "/"), "/")...)
+		if strings.HasSuffix(u.Path, "/") && len(seg) == 3 {
+			seg = append(seg, "") // k8s://ctx/ns/pod/ — context, no container
+		}
+		if seg[len(seg)-1] == "" && len(seg) != 4 {
+			seg = seg[:len(seg)-1]
+		}
+		var ctx, ns, pod, ctr string
+		switch len(seg) {
+		case 1:
+			pod = seg[0]
+		case 2:
+			ns, pod = seg[0], seg[1]
+		case 3:
+			ns, pod, ctr = seg[0], seg[1], seg[2]
+		case 4:
+			ctx, ns, pod, ctr = seg[0], seg[1], seg[2], seg[3]
+		default:
+			return nil, "", fmt.Errorf("%s: want k8s://[context/]namespace/pod[/container]", hop)
+		}
+		via := []string{"kubectl", "exec", "-i"}
+		if ctx != "" {
+			via = append(via, "--context", ctx)
+		}
+		if ns != "" {
+			via = append(via, "-n", ns)
+		}
+		via = append(via, pod)
+		if ctr != "" {
+			via = append(via, "-c", ctr)
+		}
+		return append(via, "--"), "", nil
 	}
-	return d, nil
+	return nil, "", fmt.Errorf("unknown target scheme %q (ssh, docker, podman, k8s)", u.Scheme)
 }
 
 func targetsPath(s *store.Store) string { return filepath.Join(s.Home, "targets.json") }

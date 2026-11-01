@@ -67,7 +67,8 @@ func One(s *store.Store, name string, p store.Placement, value string, resolve f
 			return fmt.Errorf("remote placement has no transport")
 		}
 		if p.Path != "" {
-			return runStdin(p.Via[0], remoteArgs(p.Via, remoteWriteCmd(p.Path, kindOf(s, name), p.Mode)), value)
+			argv := Command(p.Via, remoteWriteCmd(p.Path, kindOf(s, name), p.Mode))
+			return runStdin(argv[0], argv[1:], value)
 		}
 		bin := p.Bin
 		if bin == "" {
@@ -77,7 +78,8 @@ func One(s *store.Store, name string, p store.Placement, value string, resolve f
 		if k := kindOf(s, name); k != "" {
 			cmd = append(cmd, "--kind", k)
 		}
-		return runStdin(p.Via[0], remoteArgs(p.Via, cmd), value)
+		argv := Command(p.Via, cmd)
+		return runStdin(argv[0], argv[1:], value)
 	}
 	return fmt.Errorf("unknown placement type %q", p.Type)
 }
@@ -203,16 +205,43 @@ func remoteWriteCmd(path, kind, mode string) []string {
 	return []string{"sh", "-c", script, "sh", path}
 }
 
-// remoteArgs appends cmd to the transport. ssh joins its arguments into one
-// shell string on the far side, so for ssh each word is quoted; transports
-// like docker/kubectl exec pass argv through as-is.
-func remoteArgs(via, cmd []string) []string {
-	out := append([]string{}, via[1:]...)
-	if filepath.Base(via[0]) != "ssh" {
-		return append(out, cmd...)
+// Hop separates the hops of a chained transport in Placement.Via:
+// ssh://web+docker://api is {"ssh","web",Hop,"docker","exec","-i","api"}.
+const Hop = "+"
+
+// Command builds the argv that runs cmd at the far end of via, innermost hop
+// first. ssh joins its arguments into one shell string on the far side, so
+// everything after an ssh hop is quoted for that shell — once per ssh hop —
+// while docker/kubectl exec pass argv through as-is.
+func Command(via, cmd []string) []string {
+	var hops [][]string
+	cur := []string{}
+	for _, v := range via {
+		if v == Hop {
+			hops, cur = append(hops, cur), []string{}
+			continue
+		}
+		cur = append(cur, v)
 	}
-	for _, c := range cmd {
-		out = append(out, "'"+strings.ReplaceAll(c, "'", `'\''`)+"'")
+	hops = append(hops, cur)
+	argv := cmd
+	for i := len(hops) - 1; i >= 0; i-- {
+		h := hops[i]
+		if filepath.Base(h[0]) == "ssh" {
+			q := make([]string, len(argv))
+			for j, c := range argv {
+				q[j] = shellQuote(c)
+			}
+			argv = q
+		}
+		argv = append(append([]string{}, h...), argv...)
 	}
-	return out
+	return argv
+}
+
+func shellQuote(c string) string {
+	if c != "" && strings.Trim(c, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-./:=@,%+") == "" {
+		return c
+	}
+	return "'" + strings.ReplaceAll(c, "'", `'\''`) + "'"
 }

@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"sort"
 	"strings"
 
 	"golang.org/x/term"
@@ -32,6 +31,12 @@ func register(name, summary string, run func([]string) error) {
 // Main dispatches. Exit codes: 0 ok, 1 error, 2 usage, child code for exec/run.
 func Main(args []string) int {
 	if len(args) == 0 || args[0] == "help" || args[0] == "-h" || args[0] == "--help" {
+		if len(args) > 1 && args[0] == "help" {
+			if printHelp(args[1]) {
+				return 0
+			}
+			fmt.Fprintf(os.Stderr, "sec: no help for %q\n\n", args[1])
+		}
 		usage()
 		return 0
 	}
@@ -41,13 +46,22 @@ func Main(args []string) int {
 	}
 	for _, c := range commands {
 		if c.name == args[0] {
+			if wantsHelp(c.name, args[1:]) && printHelp(c.name) {
+				return 0
+			}
 			err := c.run(args[1:])
 			var ec exitCode
 			if errors.As(err, &ec) {
+				if ec == 2 {
+					suggest(c.name, args[1:])
+				}
 				return int(ec)
 			}
 			if err != nil {
 				fmt.Fprintln(os.Stderr, "sec:", err)
+				if strings.HasPrefix(err.Error(), "usage:") {
+					suggest(c.name, args[1:])
+				}
 				return 1
 			}
 			return 0
@@ -61,22 +75,6 @@ func Main(args []string) int {
 type exitCode int
 
 func (e exitCode) Error() string { return fmt.Sprintf("exit %d", int(e)) }
-
-func usage() {
-	fmt.Println(`sec — credentials broker for humans and their agents.
-Agents write {{NAME}} placeholders; sec fills them, runs the work, scrubs the output.
-
-Usage: sec <command> [flags]
-
-Commands:`)
-	sort.Slice(commands, func(i, j int) bool { return commands[i].name < commands[j].name })
-	for _, c := range commands {
-		fmt.Printf("  %-12s %s\n", c.name, c.summary)
-	}
-	fmt.Println(`
-Owner-only flags (--print, --confirm, export) need a TTY on stdin or SEC_OWNER=1.
-Home: ` + store.Home() + `  (override with SEC_HOME)`)
-}
 
 func flags(name string) *flag.FlagSet {
 	fs := flag.NewFlagSet("sec "+name, flag.ContinueOnError)
@@ -102,6 +100,14 @@ func parse(fs *flag.FlagSet, args []string) ([]string, error) {
 }
 
 func open() (*store.Store, error) { return store.Open() }
+
+// requireOwnerTo is requireOwner for verbs whose risk is not a printed value.
+func requireOwnerTo(what, why string) error {
+	if !owner.IsOwner() {
+		return fmt.Errorf("%s is owner-only: %s. Ask the owner to run it (they may add SEC_OWNER=1)", what, why)
+	}
+	return nil
+}
 
 func requireOwner(what string) error {
 	if !owner.IsOwner() {

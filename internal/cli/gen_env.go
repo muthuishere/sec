@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -197,11 +198,26 @@ func cmdImport(args []string) error {
 		return err
 	}
 	if len(rest) != 1 {
-		return fmt.Errorf("usage: sec import TARGET [--tag t] [--only A,B] [--no-place]\n  TARGET is a path or an environment name (production, dev, local)")
+		return fmt.Errorf("usage: sec import TARGET [--tag t] [--only A,B] [--no-place]\n  TARGET is a path, an environment name (production, dev, local), or - for a sealed export on stdin")
 	}
 	// Any existing file is imported as given, whatever its name; otherwise
 	// the target is resolved as an environment name (production, dev, …).
 	path, how := rest[0], "path"
+	if path == "-" {
+		// sec sync streams a sealed export here over ssh; plaintext is refused
+		b, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			return err
+		}
+		if !isSealed(b) {
+			return fmt.Errorf("sec import - takes only a sealed export (sec export --for / sec sync)")
+		}
+		s, err := open()
+		if err != nil {
+			return err
+		}
+		return importSealed(s, "stdin", b)
+	}
 	if b, rerr := os.ReadFile(path); rerr == nil && isSealed(b) {
 		s, err := open()
 		if err != nil {

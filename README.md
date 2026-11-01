@@ -18,8 +18,15 @@ sec where APP_DB_PW                                        # the compromise-day 
 sec set TLS --from ./certs                                 # a whole file or folder (modes kept)
 sec push DB_PW,API_KEY ./app/.env                          # put it where the program reads it…
 sec push TLS ssh://hetzner/etc/myapp/certs                 # …a server, a volume, docker://ctr/path
-sec push DB_PW ssh://hetzner                               # another sec, live and kept in sync
-sec export --only DB_PW --for age1… --out x.sec            # another sec without ssh → sec import x.sec
+sec sync DB_PW,API_KEY ssh://hetzner                       # another sec: sealed for its key, nothing on disk
+sec sync DB_PW docker://api --install                      # …or a container / k8s://ns/pod; --install puts sec there
+sec sync DB_PW ssh://web+docker://api                      # ssh in, then into a container (+podman://, +k8s://)
+sec sync DB_PW --from ssh://hetzner                        # …and back
+sec export --only DB_PW --for age1… --out x.sec            # another sec with no connection → sec import x.sec
+sec remote status ssh://hetzner                            # sec there: version vs this one, vault y/n
+sec remote upgrade ssh://hetzner                           # bring it to this build; keeps sec.prev, rolls back on failure
+                                                           # (install/upgrade/sync --install also put the agent skill there)
+sec help move                                              # which of sync / push / export / remote to use
 sec keys                                                   # what .env.example needs that the vault lacks
 sec logs DB_PW --since 7d                                  # what happened
 sec ok                                                     # check everything, re-push stale copies
@@ -69,9 +76,15 @@ task install        # builds, copies to ~/.local/bin, links the agent skill, add
 sec init
 ```
 
-`sec skill install` symlinks `skills/sec` into `~/.claude/skills/` and `~/.agents/skills/` and merges
+`sec skill install` writes the skill built into the binary to `~/.claude/skills/sec` (and `$CLAUDE_CONFIG_DIR/skills/sec` when set) and
+`~/.agents/skills/sec` (`--from skills/sec` symlinks a checkout instead) and merges
 `Read(~/.config/sec/**)`, `Read(**/.env*)`, `Bash(sec get:*)`, `Bash(sec export:*)` into
 `~/.claude/settings.json` `permissions.deny` — so the harness, not the model, refuses.
+`sec sync` is deliberately not denied: it never shows a value, only the remote vault can open what
+it sends, and its own trust check (below) gates it.
+
+Every command has `sec help CMD` / `sec CMD --help` — syntax, examples, owner-only flags, what to
+run next — and a wrong usage prints the closest correct command.
 
 ## Model
 
@@ -110,6 +123,26 @@ sec init
   from asking the keyring — that exposure is identical to a 0600 file.
 - **Owner vs agent**: a TTY on stdin or `SEC_OWNER=1` is the owner. `get --print`, `export`,
   `--allow-output-only` need it. Agent harnesses run with a piped stdin, so they never have it.
+- **`sec sync`**: one transport — run a command there with stdin piped (`ssh host`,
+  `docker|podman exec -i ctr`, `kubectl exec -i [--context] [-n] pod [-c] --`). `sec id` there
+  names the remote key; values are sealed for it in memory and streamed into `sec import -`;
+  `--from` runs `sec export --for <this vault> --out -` there. The remote key is TOFU-pinned per
+  target (`known_secs.json`): an agent may sync only to a pinned or saved (`sec target add NAME
+  age1…`) key, first contact is the owner's, a changed key is refused until the owner `--repin`s.
+  Hops chain with `+` (`ssh://web+docker://api`, `ssh://bastion+ssh://db+k8s://ns/pod`): one
+  builder, quoted once per ssh hop, used by both `sync` and `push`.
+  `--install` (owner) detects the far end (`uname -sm`, or PowerShell on Windows), streams a
+  checksum-verified binary into that user's own folder (`~/.local/bin`, or
+  `%LOCALAPPDATA%\Programs\sec` added to the user PATH) — never root, sudo or Administrator —
+  and runs `sec init` there. Both sides audit.
+- **`sec remote install|upgrade|status|uninstall WHERE`**: the sec binary on any sync route, no
+  secrets moved. Upgrade compares sha256 (same build = no-op), keeps `sec.prev`, never touches the
+  vault or identity, and rolls back if the new binary fails `sec version` or the vault's name count
+  changes. Uninstall keeps the vault and says where it is; `--purge` deletes it only for the owner
+  typing at a real terminal, after listing the names and typing the remote fingerprint back, and
+  refuses secrets that exist nowhere else unless `--force`.
+- **No prompts, ever**: sec never triggers an OS dialog — with no login keychain (a moved
+  `HOME`, a sandbox) the keyring is simply not used.
 - **`sec agent` needs a real terminal.** It owns the pty, so with no tty there is no keyboard to
   filter and it refuses rather than pretending. That also means the interactive check is the one
   thing a CI run cannot cover — the rewrite is proven instead by the headless pty harness in

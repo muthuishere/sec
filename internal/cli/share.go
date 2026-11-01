@@ -11,16 +11,24 @@ import (
 
 // Moving secrets to another sec without ssh: `sec export --for KEY` seals
 // them for that vault's public key, `sec import FILE` there opens them.
-// (With ssh, `sec push NAMES ssh://host` does it live and stays in sync.)
+// With ssh, `sec sync NAMES ssh://host` does both halves in one step.
 
 func init() {
 	register("id", "print this vault's public key — the other side of: sec export --for KEY", cmdID)
 }
 
 func cmdID(args []string) error {
+	fs := flags("id")
+	installed := fs.String("record-install", "", "internal: audit that sec sync --install put this binary here")
+	if _, err := parse(fs, args); err != nil {
+		return err
+	}
 	s, err := open()
 	if err != nil {
 		return err
+	}
+	if *installed != "" {
+		s.Audit("installed", owner.Agent(), nil, map[string]string{"by": "sec sync --install / sec remote", "detail": *installed})
 	}
 	fmt.Println(s.PublicKey())
 	return nil
@@ -33,27 +41,22 @@ func exportSealed(s *store.Store, names []string, to, out string) error {
 	if t, ok := loadTargets(s)[to]; ok {
 		to = t
 	}
-	var items []store.SharedItem
-	for _, n := range names {
-		m, err := s.Meta(n)
-		if err != nil {
-			return fmt.Errorf("no such secret: %s", n)
-		}
-		v, err := s.Get(n)
-		if err != nil {
-			return err
-		}
-		items = append(items, store.SharedItem{Name: n, Kind: m.Kind, Value: v})
-	}
-	sealed, err := store.Seal(to, items)
+	sealed, err := sealNames(s, names, to)
 	if err != nil {
 		return err
+	}
+	if out == "-" {
+		// sec sync --from: the blob streams over ssh, the note goes to stderr
+		os.Stdout.Write(sealed)
+		s.Audit("export.sealed", owner.Agent(), names, map[string]string{"for": to, "file": "-"})
+		fmt.Fprintf(os.Stderr, "✓ %d secret(s) sealed for %s → stdout\n", len(names), label)
+		return nil
 	}
 	if err := os.WriteFile(out, sealed, 0o600); err != nil {
 		return err
 	}
 	s.Audit("export.sealed", owner.Agent(), names, map[string]string{"for": to, "file": out})
-	fmt.Printf("✓ %d secret(s) sealed for %s → %s\n  on the other machine: sec import %s\n", len(items), label, out, out)
+	fmt.Printf("✓ %d secret(s) sealed for %s → %s\n  on the other machine: sec import %s\n", len(names), label, out, out)
 	return nil
 }
 
