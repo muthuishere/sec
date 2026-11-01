@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"secure-agent/internal/envfile"
-	"secure-agent/internal/tmpl"
+	"github.com/muthuishere/secure-agent/internal/envfile"
+	"github.com/muthuishere/secure-agent/internal/tmpl"
 )
 
 func init() {

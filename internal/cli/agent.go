@@ -8,9 +8,9 @@ import (
 	"runtime"
 	"strings"
 
-	"secure-agent/internal/agentpty"
-	"secure-agent/internal/detect"
-	"secure-agent/internal/store"
+	"github.com/muthuishere/secure-agent/internal/agentpty"
+	"github.com/muthuishere/secure-agent/internal/detect"
+	"github.com/muthuishere/secure-agent/internal/store"
 )
 
 func init() {

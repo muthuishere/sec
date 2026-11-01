@@ -38,7 +38,7 @@ func TestRemoteLifecycleDocker(t *testing.T) {
 	bin := filepath.Join(buildSec(t), "sec")
 
 	build := func(dir, ver string) {
-		c := exec.Command("go", "build", "-trimpath", "-ldflags", "-s -w -X secure-agent/internal/version.Version="+ver, "-o", filepath.Join(dir, "sec-linux-"+goarch), "./cmd/sec")
+		c := exec.Command("go", "build", "-trimpath", "-ldflags", "-s -w -X github.com/muthuishere/secure-agent/internal/version.Version="+ver, "-o", filepath.Join(dir, "sec-linux-"+goarch), "./cmd/sec")
 		c.Dir, c.Env = repo, append(os.Environ(), "CGO_ENABLED=0", "GOOS=linux", "GOARCH="+goarch)
 		if out, err := c.CombinedOutput(); err != nil {
 			t.Fatalf("%v %s", err, out)

@@ -13,9 +13,9 @@ import (
 
 	"golang.org/x/term"
 
-	"secure-agent/internal/owner"
-	"secure-agent/internal/store"
-	"secure-agent/internal/version"
+	"github.com/muthuishere/secure-agent/internal/owner"
+	"github.com/muthuishere/secure-agent/internal/store"
+	"github.com/muthuishere/secure-agent/internal/version"
 )
 
 // sec remote manages the sec binary on the other end of a route, without

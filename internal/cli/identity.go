@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"secure-agent/internal/owner"
-	"secure-agent/internal/store"
+	"github.com/muthuishere/secure-agent/internal/owner"
+	"github.com/muthuishere/secure-agent/internal/store"
 )
 
 func init() {

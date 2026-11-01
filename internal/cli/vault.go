@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"secure-agent/internal/bundle"
-	"secure-agent/internal/owner"
-	"secure-agent/internal/place"
-	"secure-agent/internal/store"
+	"github.com/muthuishere/secure-agent/internal/bundle"
+	"github.com/muthuishere/secure-agent/internal/owner"
+	"github.com/muthuishere/secure-agent/internal/place"
+	"github.com/muthuishere/secure-agent/internal/store"
 )
 
 func init() {

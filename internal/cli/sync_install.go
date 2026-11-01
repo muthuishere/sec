@@ -10,9 +10,9 @@ import (
 	"runtime"
 	"strings"
 
-	"secure-agent/internal/owner"
-	"secure-agent/internal/store"
-	"secure-agent/internal/version"
+	"github.com/muthuishere/secure-agent/internal/owner"
+	"github.com/muthuishere/secure-agent/internal/store"
+	"github.com/muthuishere/secure-agent/internal/version"
 )
 
 // ensureRemoteSec runs when `sec id` failed on the other end: sec is missing,
@@ -280,7 +280,7 @@ func binaryFor(goos, goarch string) (string, func(), error) {
 		return "", noop, err
 	}
 	out := filepath.Join(tmp, "sec")
-	cmd := exec.Command("go", "build", "-trimpath", "-ldflags", "-s -w -X secure-agent/internal/version.Version="+version.Version, "-o", out, "./cmd/sec")
+	cmd := exec.Command("go", "build", "-trimpath", "-ldflags", "-s -w -X github.com/muthuishere/secure-agent/internal/version.Version="+version.Version, "-o", out, "./cmd/sec")
 	cmd.Dir = src
 	cmd.Env = append(os.Environ(), "CGO_ENABLED=0", "GOOS="+goos, "GOARCH="+goarch)
 	cmd.Stderr = os.Stderr
@@ -300,7 +300,7 @@ func secSource() string {
 	d, err := os.Getwd()
 	for err == nil {
 		if b, rerr := os.ReadFile(filepath.Join(d, "go.mod")); rerr == nil {
-			if strings.Contains(string(b), "module secure-agent\n") {
+			if strings.Contains(string(b), "module github.com/muthuishere/secure-agent\n") {
 				return d
 			}
 			return ""

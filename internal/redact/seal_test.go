@@ -5,7 +5,7 @@ import (
 	"encoding/base64"
 	"testing"
 
-	"secure-agent/internal/tmpl"
+	"github.com/muthuishere/secure-agent/internal/tmpl"
 )
 
 // A file that goes out through Fill and back through Seal must be the file it

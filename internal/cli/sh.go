@@ -10,9 +10,9 @@ import (
 	"runtime"
 	"strings"
 
-	"secure-agent/internal/owner"
-	"secure-agent/internal/policy"
-	"secure-agent/internal/redact"
+	"github.com/muthuishere/secure-agent/internal/owner"
+	"github.com/muthuishere/secure-agent/internal/policy"
+	"github.com/muthuishere/secure-agent/internal/redact"
 )
 
 func init() {

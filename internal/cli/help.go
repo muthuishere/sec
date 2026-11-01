@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"secure-agent/internal/store"
+	"github.com/muthuishere/secure-agent/internal/store"
 )
 
 // Help is data: one doc per command, grouped by task. `sec help CMD`,

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"secure-agent/internal/detect"
+	"github.com/muthuishere/secure-agent/internal/detect"
 )
 
 // Byte sequences below are the ones measured on stdin with Claude Code

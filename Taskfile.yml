@@ -1,7 +1,7 @@
 version: '3'
 
 vars:
-  PKG: secure-agent/internal/version
+  PKG: github.com/muthuishere/secure-agent/internal/version
   VERSION:
     sh: git describe --tags --always --dirty 2>/dev/null || echo 0.0.0-dev
   COMMIT:

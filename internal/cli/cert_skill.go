@@ -3,13 +3,13 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/muthuishere/secure-agent/internal/version"
+	"github.com/muthuishere/secure-agent/skills"
 	"os"
 	"path/filepath"
-	"secure-agent/internal/version"
-	"secure-agent/skills"
 
-	"secure-agent/internal/cert"
-	"secure-agent/internal/owner"
+	"github.com/muthuishere/secure-agent/internal/cert"
+	"github.com/muthuishere/secure-agent/internal/owner"
 )
 
 func init() {
