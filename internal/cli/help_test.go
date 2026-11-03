@@ -78,3 +78,12 @@ func TestSkillInstallFromBinary(t *testing.T) {
 		t.Fatal("must refuse a folder holding files sec did not write")
 	}
 }
+
+func TestReadOnlyRefusesWrites(t *testing.T) {
+	t.Setenv("SEC_READONLY", "1")
+	for _, c := range []string{"set", "rm", "export", "get", "push", "sync", "rotate", "import", "identity", "remote"} {
+		if code := Main([]string{c, "X"}); code != 1 {
+			t.Errorf("%s: exit %d, want refusal", c, code)
+		}
+	}
+}

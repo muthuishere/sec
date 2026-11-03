@@ -29,6 +29,14 @@ func register(name, summary string, run func([]string) error) {
 }
 
 // Main dispatches. Exit codes: 0 ok, 1 error, 2 usage, child code for exec/run.
+// readOnlyOK are the commands a read-only vault (SEC_READONLY=1, e.g. a CI
+// job) may run: they use values without changing, moving or printing them.
+var readOnlyOK = map[string]bool{
+	"ls": true, "run": true, "exec": true, "render": true, "seal": true,
+	"keys": true, "where": true, "logs": true, "audit": true, "env": true,
+	"id": true,
+}
+
 func Main(args []string) int {
 	if len(args) == 0 || args[0] == "help" || args[0] == "-h" || args[0] == "--help" {
 		if len(args) > 1 && args[0] == "help" {
@@ -48,6 +56,10 @@ func Main(args []string) int {
 		if c.name == args[0] {
 			if wantsHelp(c.name, args[1:]) && printHelp(c.name) {
 				return 0
+			}
+			if store.ReadOnly() && !readOnlyOK[c.name] {
+				fmt.Fprintf(os.Stderr, "sec: %s is not allowed: this vault is read-only (SEC_READONLY=1)\n", c.name)
+				return 1
 			}
 			err := c.run(args[1:])
 			var ec exitCode
