@@ -41,7 +41,7 @@ sec run STRIPE_KEY,DB_URL=DATABASE_URL -- go test ./...          # as env vars
 | new password / token | `sec gen --save NAME [--env production=VAR] [--hex --len 32]` |
 | user pasted a value in chat | `sec set NAME <<'EOF' … EOF`, then recommend `sec rotate NAME` |
 | store a file or folder (service-account JSON, cert, key dir) | `sec file add ./sa.json` (name from the file: `SA_JSON`) or `sec file add ./certs TLS` |
-| get a stored file/folder back | `sec file get SA_JSON ./sa.json` (0600; default path = original name) · `sec file ls` lists them |
+| get a stored file/folder back | `sec file get SA_JSON` prints it to stdout as-is (folder = tar.gz); `sec file get SA_JSON -o ./sa.json` writes it; `sec file ls` lists them |
 | a repo `.env` into the vault | `sec import production --tag <project>` |
 | **copy secrets to a server / container / pod running sec** | `sec sync A,B ssh://host` · `docker://ctr` · `podman://ctr` · `k8s://[ctx/]ns/pod[/ctr]` |
 | …a container / pod on a server | chain hops with `+`: `ssh://web+docker://api` · `ssh://web+k8s://ns/pod` · `ssh://bastion+ssh://db` |

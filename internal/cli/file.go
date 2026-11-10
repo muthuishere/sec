@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/muthuishere/secure-agent/internal/bundle"
+	"github.com/muthuishere/secure-agent/internal/owner"
 )
 
 func init() {
@@ -15,10 +16,10 @@ func init() {
 	docs["file"] = helpDoc{group: "store",
 		syntax: []string{
 			"sec file add PATH [NAME] [--tag a,b]   store a file or folder (NAME defaults from the file name)",
-			"sec file get NAME [OUT] [--mode 0600]  write it back (OUT defaults to ./<original name>)",
+			"sec file get NAME [-o PATH]             print it to stdout as-is (folder = tar.gz), or write it with -o",
 			"sec file ls                            list stored files and folders",
 		},
-		examples: []string{"sec file add ~/Downloads/sa.json           # -> SA_JSON", "sec file add ./certs TLS_CERTS", "sec file get SA_JSON ./sa.json", "sec file ls"},
+		examples: []string{"sec file add ~/Downloads/sa.json           # -> SA_JSON", "sec file add ./certs TLS_CERTS", "sec file get SA_JSON > sa.json", "sec file get TLS_CERTS -o ./certs", "sec file ls"},
 		next:     "sec where NAME  ·  sec push NAME ssh://host/path  ·  sec rm NAME"}
 }
 
@@ -34,14 +35,14 @@ func fileName(p string) string {
 }
 
 func cmdFile(args []string) error {
-	usage := fmt.Errorf("usage: sec file add PATH [NAME] [--tag a,b]  |  sec file get NAME [OUT] [--mode 0600]  |  sec file ls")
+	usage := fmt.Errorf("usage: sec file add PATH [NAME] [--tag a,b]  |  sec file get NAME [-o PATH]  |  sec file ls")
 	if len(args) == 0 {
 		return usage
 	}
 	sub, rest := args[0], args[1:]
 	var pos, flagArgs []string
 	for i := 0; i < len(rest); i++ {
-		if strings.HasPrefix(rest[i], "--") {
+		if strings.HasPrefix(rest[i], "--") || rest[i] == "-o" {
 			flagArgs = append(flagArgs, rest[i])
 			if !strings.Contains(rest[i], "=") && i+1 < len(rest) {
 				flagArgs = append(flagArgs, rest[i+1])
@@ -76,36 +77,48 @@ func cmdFile(args []string) error {
 				}
 			}
 		}
-		fmt.Printf("  get it back: sec file get %s [OUT]\n", name)
+		fmt.Fprintf(os.Stderr, "  get it back: sec file get %s [-o PATH]\n", name)
 		return nil
-	case "get", "pull", "out":
-		if len(pos) < 1 || len(pos) > 2 {
+	case "get", "pull", "out", "cat", "read":
+		// Boring and standard (gcloud secrets versions access / op read): content to stdout as-is,
+		// or -o PATH to write it. A folder streams as tar.gz on stdout, or is extracted with -o DIR.
+		if len(pos) != 1 {
 			return usage
 		}
 		name := pos[0]
+		out := ""
+		for i := 0; i < len(flagArgs); i++ {
+			f := flagArgs[i]
+			if f == "-o" || f == "--out" || f == "--output" {
+				if i+1 < len(flagArgs) {
+					out = flagArgs[i+1]
+					i++
+				}
+			} else if v, ok := strings.CutPrefix(f, "--out="); ok {
+				out = v
+			}
+		}
 		s, err := open()
 		if err != nil {
 			return err
 		}
 		m, err := s.Meta(name)
 		if err != nil {
-			return fmt.Errorf("sec file get: no secret %s (sec file ls)", name)
+			return fmt.Errorf("sec file get: no file %s (sec file ls)", name)
 		}
 		if m.Kind != bundle.KindFile && m.Kind != bundle.KindDir {
-			return fmt.Errorf("sec file get: %s is a value, not a file — use sec run / sec push", name)
+			return fmt.Errorf("sec file get: %s is a value, not a file (use sec run / sec push)", name)
 		}
-		out := ""
-		if len(pos) == 2 {
-			out = pos[1]
-		} else if strings.HasPrefix(m.Source, "file:") {
-			out = "./" + strings.TrimPrefix(m.Source, "file:")
-		} else {
-			out = "./" + strings.ToLower(name)
+		data, err := s.Get(name)
+		if err != nil {
+			return err
 		}
-		if !strings.HasPrefix(out, "/") && !strings.HasPrefix(out, ".") && !strings.Contains(out, "://") {
-			out = "./" + out
+		s.Audit("file.get", owner.Agent(), []string{name}, map[string]string{"out": out})
+		if out == "" || out == "-" {
+			_, err = os.Stdout.Write(data)
+			return err
 		}
-		return cmdPush(append([]string{name, out}, flagArgs...))
+		return bundle.Write(out, m.Kind, data, 0)
 	case "ls", "list":
 		s, err := open()
 		if err != nil {
