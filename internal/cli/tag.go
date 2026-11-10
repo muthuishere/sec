@@ -11,8 +11,8 @@ func init() {
 	register("tag", "tag NAME a,b[,c] [--add] — set (or add to) the tags (projects, categories) of a secret or file", cmdTag)
 	docs["tag"] = helpDoc{group: "store",
 		syntax:   []string{"sec tag NAME a,b[,c]          replace the tags", "sec tag NAME c --add          add tags"},
-		examples: []string{"sec tag SA_JSON reqsume,firebase", "sec tag STRIPE_KEY liveconv --add", "sec ls --tag reqsume", "sec file ls --tag reqsume"},
-		next:     "sec ls --tag T  ·  sec file add PATH --tag a,b"}
+		examples: []string{"sec tag SA_JSON reqsume,firebase", "sec tag STRIPE_KEY liveconv --add"},
+		next:     "sec ls --tag T  ·  sec file ls --tag T  ·  sec file add PATH --tag a,b"}
 }
 
 func cmdTag(args []string) error {
