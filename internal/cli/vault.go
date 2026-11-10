@@ -162,6 +162,7 @@ type lsRow struct {
 	Name       string    `json:"name"`
 	Version    int       `json:"version"`
 	Tags       []string  `json:"tags,omitempty"`
+	Type       string    `json:"type"`
 	Source     string    `json:"source,omitempty"`
 	Placements int       `json:"placements"`
 	Retired    int       `json:"retired"`
@@ -194,7 +195,11 @@ func cmdLs(args []string) error {
 		if *tag != "" && !hasTag(m, *tag) {
 			continue
 		}
-		r := lsRow{Name: n, Version: m.Version, Tags: m.Tags, Source: m.Source, Placements: len(m.Placements), Retired: len(m.Retired), Updated: m.Updated}
+		typ := m.Kind
+		if typ == "" {
+			typ = "value"
+		}
+		r := lsRow{Name: n, Version: m.Version, Tags: m.Tags, Type: typ, Source: m.Source, Placements: len(m.Placements), Retired: len(m.Retired), Updated: m.Updated}
 		if t, ok := used[n]; ok {
 			r.LastUsed = t.Format(time.RFC3339)
 		}
@@ -210,13 +215,13 @@ func cmdLs(args []string) error {
 		fmt.Println("(empty vault)")
 		return nil
 	}
-	fmt.Printf("%-32s %-4s %-10s %-6s %-20s %s\n", "NAME", "VER", "PLACED", "TAGS", "LAST USED", "SOURCE")
+	fmt.Printf("%-32s %-5s %-4s %-6s %-16s %-16s %s\n", "NAME", "TYPE", "VER", "PLACED", "TAGS", "LAST USED", "SOURCE")
 	for _, r := range rows {
 		lu := "-"
 		if r.LastUsed != "" {
 			lu = r.LastUsed[:16]
 		}
-		fmt.Printf("%-32s v%-3d %-10d %-6s %-20s %s\n", r.Name, r.Version, r.Placements, strings.Join(r.Tags, ","), lu, r.Source)
+		fmt.Printf("%-32s %-5s v%-3d %-6d %-16s %-16s %s\n", r.Name, r.Type, r.Version, r.Placements, strings.Join(r.Tags, ","), lu, r.Source)
 	}
 	return nil
 }

@@ -17,7 +17,7 @@ func init() {
 		syntax: []string{
 			"sec file add PATH [NAME] [--tag a,b]   store a file or folder (NAME defaults from the file name)",
 			"sec file get NAME [-o PATH]             print it to stdout as-is (folder = tar.gz), or write it with -o",
-			"sec file ls                            list stored files and folders",
+			"sec file ls [--tag T]                  list stored files and folders (with tags)",
 		},
 		examples: []string{"sec file add ~/Downloads/sa.json           # -> SA_JSON", "sec file add ./certs TLS_CERTS", "sec file get SA_JSON > sa.json", "sec file get TLS_CERTS -o ./certs", "sec file ls"},
 		next:     "sec where NAME  ·  sec push NAME ssh://host/path  ·  sec rm NAME"}
@@ -120,6 +120,12 @@ func cmdFile(args []string) error {
 		}
 		return bundle.Write(out, m.Kind, data, 0)
 	case "ls", "list":
+		want := ""
+		for i := 0; i+1 < len(flagArgs); i++ {
+			if flagArgs[i] == "--tag" {
+				want = flagArgs[i+1]
+			}
+		}
 		s, err := open()
 		if err != nil {
 			return err
@@ -131,11 +137,11 @@ func cmdFile(args []string) error {
 		n := 0
 		for _, nm := range names {
 			m, err := s.Meta(nm)
-			if err != nil || (m.Kind != bundle.KindFile && m.Kind != bundle.KindDir) {
+			if err != nil || (m.Kind != bundle.KindFile && m.Kind != bundle.KindDir) || (want != "" && !hasTag(m, want)) {
 				continue
 			}
 			orig := strings.TrimPrefix(m.Source, "file:")
-			fmt.Printf("%-28s %-6s v%-3d %s\n", nm, m.Kind, m.Version, orig)
+			fmt.Printf("%-36s %-5s v%-3d %-24s %s\n", nm, m.Kind, m.Version, orig, strings.Join(m.Tags, ","))
 			n++
 		}
 		if n == 0 {
