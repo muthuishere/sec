@@ -92,7 +92,11 @@ func cmdPush(args []string) error {
 		if err != nil {
 			return err
 		}
-		target := name
+		// a remote sec keeps the scope (project@env:NAME); a file gets the plain NAME
+		target := store.BareName(m.Name)
+		if len(dest.via) > 0 && dest.path == "" {
+			target = m.Name
+		}
 		if *as != "" {
 			target = *as
 		}

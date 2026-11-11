@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/muthuishere/secure-agent/internal/envfile"
+	"github.com/muthuishere/secure-agent/internal/store"
 	"github.com/muthuishere/secure-agent/internal/tmpl"
 )
 
@@ -43,6 +44,9 @@ func cmdLogs(args []string) error {
 			return err
 		}
 		from = time.Now().Add(-d)
+	}
+	if name != "" && store.ValidName(name) == nil {
+		name = s.Key(name) // the audit records the key a name resolved to
 	}
 	ents, err := s.ReadAudit(name, *action, from)
 	if err != nil {
@@ -122,12 +126,12 @@ func cmdKeys(args []string) error {
 		}
 		fmt.Printf("%s  (%d keys)\n", f, len(names))
 		for _, n := range names {
-			if inVault[n] {
+			if inVault[n] || s.Exists(n) {
 				fmt.Printf("  ✓ %s\n", n)
 			}
 		}
 		for _, n := range names {
-			if !inVault[n] {
+			if !inVault[n] && !s.Exists(n) {
 				missing++
 				fmt.Printf("  ✗ %s   missing — sec set %s\n", n, n)
 			}

@@ -52,7 +52,7 @@ func cmdOk(args []string) error {
 			}
 			var missing []string
 			for _, n := range need {
-				if !inVault[n] {
+				if !inVault[n] && !s.Exists(n) {
 					missing = append(missing, n)
 				}
 			}

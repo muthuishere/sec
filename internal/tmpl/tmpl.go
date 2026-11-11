@@ -1,4 +1,4 @@
-// Package tmpl finds and fills {{NAME}} placeholders.
+// Package tmpl finds and fills {{NAME}} and {{project@env:NAME}} placeholders.
 package tmpl
 
 import (
@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-var re = regexp.MustCompile(`\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}`)
+var re = regexp.MustCompile(`\{\{\s*((?:[a-z0-9@][a-z0-9._/@-]*:)?[A-Za-z_][A-Za-z0-9_]*)\s*\}\}`)
 
 // Names returns the distinct placeholder names in s, in first-seen order.
 func Names(s string) []string {

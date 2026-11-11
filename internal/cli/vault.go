@@ -16,7 +16,7 @@ import (
 func init() {
 	register("init", "create the age identity + empty vault", cmdInit)
 	register("set", "store a value from stdin (masked prompt on a TTY), or a whole file/folder with --from PATH", cmdSet)
-	register("get", "print a value — owner-only, needs --print", cmdGet)
+	register("get", "get NAME --out FILE writes the value to a new 0600 file (agents ok); --print shows it (owner-only)", cmdGet)
 	register("ls", "list secret names (never values); --json for agents", cmdLs)
 	register("rm", "delete a secret and its retired versions", cmdRm)
 	register("recipients", "list/add age public keys that can decrypt the vault", cmdRecipients)
@@ -129,15 +129,19 @@ func cmdSet(args []string) error {
 func cmdGet(args []string) error {
 	fs := flags("get")
 	print := fs.Bool("print", false, "actually print the value (owner-only)")
+	out := fs.String("out", "", "write the raw value to this NEW file (0600; an existing file or symlink is refused) — never to stdout")
 	rest, err := parse(fs, args)
 	if err != nil {
 		return err
 	}
-	if len(rest) != 1 {
-		return fmt.Errorf("usage: sec get NAME --print")
+	if len(rest) != 1 || (*print && *out != "") {
+		return fmt.Errorf("usage: sec get NAME --out FILE | sec get NAME --print")
+	}
+	if *out != "" {
+		return getToFile(rest[0], *out)
 	}
 	if !*print {
-		return fmt.Errorf("sec get never prints by default. Use `sec exec -- cmd {{%s}}` to use it, or --print as the owner", rest[0])
+		return fmt.Errorf("sec get never prints by default. Use `sec exec -- cmd {{%s}}` to use it, `sec get %s --out FILE` for a program that reads a file, or --print as the owner", rest[0], rest[0])
 	}
 	if err := requireOwner("get --print"); err != nil {
 		return err
@@ -158,8 +162,45 @@ func cmdGet(args []string) error {
 	return nil
 }
 
+// getToFile is the non-printing delivery for programs with no TTY (daemons):
+// the value goes into a file only this user can read, never through stdout.
+// Same risk class as sec render, so agents may run it; it is audited.
+// O_EXCL refuses an existing path — including a symlink, dangling or not —
+// so it can never overwrite or follow something planted there.
+func getToFile(name, out string) error {
+	s, err := open()
+	if err != nil {
+		return err
+	}
+	v, err := s.Get(name)
+	if err != nil {
+		return err
+	}
+	f, err := os.OpenFile(out, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	if err != nil {
+		if os.IsExist(err) {
+			return fmt.Errorf("%s already exists — sec get --out writes only a new file (remove it first)", out)
+		}
+		return err
+	}
+	if _, err := f.Write(v); err != nil {
+		f.Close()
+		os.Remove(out)
+		return err
+	}
+	if err := f.Close(); err != nil {
+		os.Remove(out)
+		return err
+	}
+	s.Audit("get.out", owner.Agent(), []string{name}, map[string]string{"out": out})
+	fmt.Fprintf(os.Stderr, "✓ %s → %s (0600, %d bytes)\n", s.Key(name), out, len(v))
+	return nil
+}
+
 type lsRow struct {
-	Name       string    `json:"name"`
+	Name       string    `json:"name"` // the address: NAME or project@env:NAME
+	Project    string    `json:"project"`
+	Env        string    `json:"env"`
 	Version    int       `json:"version"`
 	Tags       []string  `json:"tags,omitempty"`
 	Type       string    `json:"type"`
@@ -195,11 +236,17 @@ func cmdLs(args []string) error {
 		if *tag != "" && !hasTag(m, *tag) {
 			continue
 		}
+		if explicitScope.project != "" && m.Project != explicitScope.project {
+			continue
+		}
+		if explicitScope.env != "" && m.Env != explicitScope.env {
+			continue
+		}
 		typ := m.Kind
 		if typ == "" {
 			typ = "value"
 		}
-		r := lsRow{Name: n, Version: m.Version, Tags: m.Tags, Type: typ, Source: m.Source, Placements: len(m.Placements), Retired: len(m.Retired), Updated: m.Updated}
+		r := lsRow{Name: n, Project: m.Project, Env: m.Env, Version: m.Version, Tags: m.Tags, Type: typ, Source: m.Source, Placements: len(m.Placements), Retired: len(m.Retired), Updated: m.Updated}
 		if t, ok := used[n]; ok {
 			r.LastUsed = t.Format(time.RFC3339)
 		}
@@ -215,13 +262,13 @@ func cmdLs(args []string) error {
 		fmt.Println("(empty vault)")
 		return nil
 	}
-	fmt.Printf("%-32s %-5s %-4s %-6s %-16s %-16s %s\n", "NAME", "TYPE", "VER", "PLACED", "TAGS", "LAST USED", "SOURCE")
+	fmt.Printf("%-20s %-12s %-32s %-5s %-4s %-6s %-16s %-16s %s\n", "PROJECT", "ENV", "NAME", "TYPE", "VER", "PLACED", "TAGS", "LAST USED", "SOURCE")
 	for _, r := range rows {
 		lu := "-"
 		if r.LastUsed != "" {
 			lu = r.LastUsed[:16]
 		}
-		fmt.Printf("%-32s %-5s v%-3d %-6d %-16s %-16s %s\n", r.Name, r.Type, r.Version, r.Placements, strings.Join(r.Tags, ","), lu, r.Source)
+		fmt.Printf("%-20s %-12s %-32s %-5s v%-3d %-6d %-16s %-16s %s\n", orDash(r.Project), orDash(r.Env), store.BareName(r.Name), r.Type, r.Version, r.Placements, strings.Join(r.Tags, ","), lu, r.Source)
 	}
 	return nil
 }

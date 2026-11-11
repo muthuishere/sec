@@ -40,13 +40,13 @@ var docs = map[string]helpDoc{
 		examples: []string{"sec set OPENAI_API_KEY                 # masked prompt", "printf %s \"$V\" | sec set DB_PW --tag prod", "sec set TLS --from ./certs             # a whole folder"},
 		next:     "sec push NAME .env  ·  sec run NAME -- cmd  ·  sec sync NAME ssh://host"},
 	"get": {group: "store",
-		syntax:   []string{"sec get NAME --print"},
-		examples: []string{"SEC_OWNER=1 sec get DB_PW --print"},
-		owner:    "--print is owner-only: it writes the plaintext value to the terminal.",
+		syntax:   []string{"sec get NAME --out FILE      write the raw value to a NEW 0600 file (never stdout)", "sec get NAME --print"},
+		examples: []string{"sec get reqsume@production:POSTGRES_PASSWORD --out /run/app/pgpass", "SEC_OWNER=1 sec get DB_PW --print"},
+		owner:    "--print is owner-only: it writes the plaintext value to the terminal. --out is open to agents (like render): an existing file or symlink is refused, every write is audited.",
 		next:     "to USE a value, don't print it: sec run NAME -- cmd  ·  sec exec -- cmd {{NAME}}"},
 	"ls": {group: "store",
-		syntax:   []string{"sec ls [--tag T] [--json]"},
-		examples: []string{"sec ls", "sec ls --json --tag prod"},
+		syntax:   []string{"sec ls [--project P] [--env E] [--tag T] [--json]"},
+		examples: []string{"sec ls", "sec ls --project reqsume --env production", "sec ls --json --tag prod"},
 		next:     "sec where NAME  ·  sec keys .env"},
 	"rm": {group: "store",
 		syntax:   []string{"sec rm NAME"},
@@ -58,8 +58,8 @@ var docs = map[string]helpDoc{
 		owner:    "--print is owner-only.",
 		next:     "sec push NAME WHERE"},
 	"import": {group: "store",
-		syntax:   []string{"sec import FILE|ENV [--only A,B] [--tag t] [--no-place]", "sec import SEALED_FILE        # from sec export --for", "sec import -                  # sealed export on stdin (what sec sync runs)"},
-		examples: []string{"sec import .env", "sec import production --only DB_PW,API_KEY", "sec import x.sec"},
+		syntax:   []string{"sec import FILE|ENV [--project P] [--env E] [--only A,B] [--tag t] [--no-place]", "sec import SEALED_FILE        # from sec export --for", "sec import -                  # sealed export on stdin (what sec sync runs)"},
+		examples: []string{"sec import .env", "sec import .env.production --project reqsume --env production", "sec import production --only DB_PW,API_KEY", "sec import x.sec"},
 		next:     "sec ls  ·  sec keys .env"},
 	"recipients": {group: "setup",
 		syntax:   []string{"sec recipients [--add age1…]"},
@@ -73,13 +73,13 @@ var docs = map[string]helpDoc{
 
 	"exec": {group: "use",
 		syntax:   []string{"sec exec -- CMD ARGS with {{NAME}}", "sec exec -f SCRIPT [-- args]"},
-		examples: []string{"sec exec -- curl -H 'Authorization: Bearer {{GH_TOKEN}}' https://api.github.com/user", "sec exec -f deploy.sh"},
+		examples: []string{"sec exec -- curl -H 'Authorization: Bearer {{GH_TOKEN}}' https://api.github.com/user", "sec exec -f deploy.sh", "sec exec -- psql postgres://app:{{reqsume@production:POSTGRES_PASSWORD}}@db/app"},
 		owner:    "--allow-output-only is owner-only: echo/cat/env style commands would just print the value.",
 		next:     "output is scrubbed of every value (and its base64/hex/url forms)"},
 	"run": {group: "use",
 		syntax:   []string{"sec run NAME[,NAME2][=ENVVAR] -- CMD ARGS"},
-		examples: []string{"sec run OPENAI_API_KEY -- python app.py", "sec run DB_PW=PGPASSWORD -- psql -h db -U app"},
-		next:     "values arrive as env vars; output is scrubbed"},
+		examples: []string{"sec run OPENAI_API_KEY -- python app.py", "sec run DB_PW=PGPASSWORD -- psql -h db -U app", "sec run reqsume@production:POSTGRES_PASSWORD=PGPASSWORD -- psql -h db"},
+		next:     "values arrive as env vars (a scoped name arrives as its plain NAME); output is scrubbed"},
 	"render": {group: "use",
 		syntax:   []string{"sec render TEMPLATE --out FILE"},
 		examples: []string{"sec render config.tmpl.yaml --out config.yaml"},
@@ -285,6 +285,11 @@ Usage: sec <command> [flags]      sec help <command>  ·  sec <command> --help`)
 		}
 	}
 	fmt.Println(`
+Projects & environments: a name may be scoped — project:NAME, project@env:NAME
+or @env:NAME (e.g. reqsume@production:POSTGRES_PASSWORD), also in {{…}}.
+Bare names resolve in the current context (sec use · SEC_PROJECT/SEC_ENV ·
+--project/--env on any command): project@env, then project, then global.
+
 Owner-only (a TTY on stdin or SEC_OWNER=1): get --print, export, first push/sync
 to a new machine, sync --install/--repin, identity move/export/import.
 Home: ` + store.Home() + `  (override with SEC_HOME)`)

@@ -32,6 +32,17 @@ $S rotate DB_PW --purge >/dev/null
 $S where DB_PW >/dev/null
 $S cert ca >/dev/null && $S cert issue --cn app.local --san localhost --out certs >/dev/null
 $S ls --json | grep -q '"name":"DB_PW"'
+# projects/envs: same NAME in two envs + global, no collision; get --out for daemons
+printf 'POSTGRES_PASSWORD=fake-dev-pw\n' > dev.env; printf 'POSTGRES_PASSWORD=fake-prod-pw\n' > prod.env
+$S import dev.env --project reqsume --env dev >/dev/null
+$S import prod.env --project reqsume --env production >/dev/null
+$S ls --json | grep -q '"name":"reqsume@production:POSTGRES_PASSWORD"'
+$S project ls | grep -q 'production=1'
+$S get reqsume@production:POSTGRES_PASSWORD --out pg.pw 2>/dev/null
+[ "$(cat pg.pw)" = fake-prod-pw ] || { echo "get --out wrong value"; exit 1; }
+$S get reqsume@dev:POSTGRES_PASSWORD --out pg.pw 2>/dev/null && { echo "get --out must refuse an existing file"; exit 1; }
+out=$($S run --project reqsume --env dev POSTGRES_PASSWORD -- sh -c 'test "$POSTGRES_PASSWORD" = fake-dev-pw && echo match')
+[ "$out" = match ] || { echo "scoped run: $out"; exit 1; }
 $S audit --since 1h | grep -q rotate
 $S identity export --out id.bak --confirm >/dev/null 2>&1 && { echo "identity export must be owner-only"; exit 1; }
 SEC_OWNER=1 $S identity export --out id.bak --confirm >/dev/null

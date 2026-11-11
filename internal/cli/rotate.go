@@ -52,7 +52,7 @@ func cmdPlace(args []string) error {
 		}
 		// A file placement may name an environment instead of a path.
 		if kind == "file" {
-			path, v, _, err := resolveEnvSpec(spec, name)
+			path, v, _, err := resolveEnvSpec(spec, store.BareName(name))
 			if err != nil {
 				return err
 			}
@@ -164,6 +164,7 @@ func cmdRotate(args []string) error {
 	if err != nil {
 		return fmt.Errorf("no such secret: %s", name)
 	}
+	name = m.Name // rotate the secret the name resolved to, in its own scope
 	ag := owner.Agent()
 
 	if *purge {

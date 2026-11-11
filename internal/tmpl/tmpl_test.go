@@ -30,3 +30,15 @@ func TestFillRefusesEmptyValue(t *testing.T) {
 		t.Errorf("error should name K: %v", err)
 	}
 }
+
+func TestScopedPlaceholders(t *testing.T) {
+	s := "{{reqsume@production:DB}} {{ reqsume/api:DB }} {{@dev:DB}} {{DB}}"
+	n := Names(s)
+	if len(n) != 4 || n[0] != "reqsume@production:DB" || n[1] != "reqsume/api:DB" || n[2] != "@dev:DB" {
+		t.Fatalf("names %v", n)
+	}
+	got, err := Fill(s, map[string]string{"reqsume@production:DB": "p", "reqsume/api:DB": "a", "@dev:DB": "d", "DB": "g"})
+	if err != nil || got != "p a d g" {
+		t.Fatalf("%q %v", got, err)
+	}
+}

@@ -59,7 +59,7 @@ func cmdGen(args []string) error {
 		}
 	}
 	for _, spec := range splitList(*env) {
-		file, v, how, err := resolveEnvSpec(spec, *save)
+		file, v, how, err := resolveEnvSpec(spec, store.BareName(*save))
 		if err != nil {
 			return err
 		}
@@ -152,7 +152,7 @@ func cmdEnv(args []string) error {
 		for _, spec := range args[2:] {
 			n, v, ok := strings.Cut(spec, "=")
 			if !ok {
-				v = n
+				v = store.BareName(n)
 			}
 			val, err := s.Get(n)
 			if err != nil {
@@ -251,7 +251,7 @@ func cmdImport(args []string) error {
 			fmt.Printf("  skip %s: %v\n", k, err)
 			continue
 		}
-		m, err := s.Set(k, []byte(vals[k]), "import")
+		m, err := s.Set(s.WriteKey(k), []byte(vals[k]), "import")
 		if err != nil {
 			return err
 		}
@@ -264,10 +264,14 @@ func cmdImport(args []string) error {
 		if err := s.SaveMeta(m); err != nil {
 			return err
 		}
-		names = append(names, k)
+		names = append(names, m.Name)
 	}
 	s.Audit("import", owner.Agent(), names, map[string]string{"file": path, "env": environmentOf(path)})
-	fmt.Printf("✓ imported %d secret(s) from %s\n", len(names), describeTarget(path, how))
+	into := ""
+	if sc := store.CurrentContext().Scope(); sc != "" {
+		into = " into " + sc
+	}
+	fmt.Printf("✓ imported %d secret(s)%s from %s\n", len(names), into, describeTarget(path, how))
 	return nil
 }
 
@@ -303,6 +307,15 @@ func cmdExport(args []string) error {
 	if err != nil {
 		return err
 	}
+	bare := map[string]string{}
+	for n, v := range vals {
+		k := store.BareName(n)
+		if _, dup := bare[k]; dup {
+			return fmt.Errorf("two exported secrets map to the .env key %s — export one scope at a time", k)
+		}
+		bare[k] = v
+	}
+	vals = bare
 	if err := envfile.Set(*out, vals); err != nil {
 		return err
 	}

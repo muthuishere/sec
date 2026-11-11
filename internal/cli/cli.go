@@ -49,7 +49,10 @@ func Main(args []string) int {
 			if wantsHelp(c.name, args[1:]) && printHelp(c.name) {
 				return 0
 			}
-			err := c.run(args[1:])
+			rest, err := scopeFlags(c.name, args[1:])
+			if err == nil {
+				err = c.run(rest)
+			}
 			var ec exitCode
 			if errors.As(err, &ec) {
 				if ec == 2 {
