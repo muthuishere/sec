@@ -11,7 +11,7 @@ else
   os=$(uname -s | tr A-Z a-z); arch=$(uname -m)
   case "$arch" in x86_64) arch=amd64 ;; aarch64) arch=arm64 ;; esac
   tmp=$(mktemp); trap 'rm -f "$tmp"' EXIT
-  curl -fsSL "https://github.com/muthuishere/sec/releases/latest/download/sec_${os}_${arch}" -o "$tmp"
+  curl -fsSL --retry 3 --connect-timeout 15 --max-time 180 "https://github.com/muthuishere/sec/releases/latest/download/sec_${os}_${arch}" -o "$tmp"
   install -m 0755 "$tmp" "$dest/sec"
 fi
 

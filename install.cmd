@@ -14,7 +14,7 @@ if %errorlevel%==0 if "%SEC_NO_GO%"=="" (
 )
 set "ARCH=amd64"
 if /i "%PROCESSOR_ARCHITECTURE%"=="ARM64" set "ARCH=arm64"
-curl.exe -fsSL "https://github.com/muthuishere/sec/releases/latest/download/sec_windows_%ARCH%.exe" -o "%DEST%\sec.exe" || exit /b 1
+curl.exe -fsSL --retry 3 --connect-timeout 15 --max-time 180 "https://github.com/muthuishere/sec/releases/latest/download/sec_windows_%ARCH%.exe" -o "%DEST%\sec.exe" || exit /b 1
 
 :path
 set "UPATH="
