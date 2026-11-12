@@ -405,6 +405,13 @@ func Init(importFrom string, backend Backend) (*Store, error) {
 	return Open()
 }
 
+// ErrReadOnly is returned by every write to a read-only vault.
+var ErrReadOnly = errors.New("this vault is read-only (SEC_READONLY=1)")
+
+// ReadOnly reports whether this process may only read the vault — set for CI
+// jobs and test runs that use secrets but must never change them.
+func ReadOnly() bool { return os.Getenv("SEC_READONLY") == "1" }
+
 // Open loads the identity (env, keyring, or file) and the recipients list.
 func Open() (*Store, error) {
 	s := &Store{Home: Home()}
@@ -543,6 +550,9 @@ func (s *Store) encryptTo(path string, value []byte) error {
 // Set stores value as the current version. An existing value is retired
 // (kept as NAME.v<N>.age) so rotate --undo can bring it back.
 func (s *Store) Set(name string, value []byte, reason string) (*Meta, error) {
+	if ReadOnly() {
+		return nil, ErrReadOnly
+	}
 	if err := ValidName(name); err != nil {
 		return nil, err
 	}
@@ -617,6 +627,9 @@ func (s *Store) Resolve(names []string) (map[string]string, error) {
 }
 
 func (s *Store) Delete(name string) error {
+	if ReadOnly() {
+		return ErrReadOnly
+	}
 	m, err := s.Meta(name)
 	if err != nil {
 		return err
@@ -633,6 +646,9 @@ func (s *Store) Delete(name string) error {
 
 // PurgeRetired drops retired ciphertexts (after the old value is revoked upstream).
 func (s *Store) PurgeRetired(name string) (int, error) {
+	if ReadOnly() {
+		return 0, ErrReadOnly
+	}
 	m, err := s.Meta(name)
 	if err != nil {
 		return 0, err

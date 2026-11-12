@@ -106,3 +106,15 @@ func TestRedact(t *testing.T) {
 		t.Fatalf("stream got %q", buf.String())
 	}
 }
+
+func TestReadOnly(t *testing.T) {
+	v := newVault(t)
+	v.Set("K", "x")
+	t.Setenv("SEC_READONLY", "1")
+	if got, _ := v.Get("K"); got != "x" {
+		t.Fatalf("read must work, got %q", got)
+	}
+	if err := v.Set("K", "y"); err == nil {
+		t.Fatal("write must be refused")
+	}
+}
