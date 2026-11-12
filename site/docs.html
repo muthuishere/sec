@@ -384,14 +384,68 @@ sec cert issue --cn HOST         # issue from that CA
 sec cert self-signed --cn HOST</pre>
 
     <h2 id="skill">sec skill install</h2>
-    <p>Symlinks <code>skills/sec</code> into <code>~/.claude/skills/</code> and
-    <code>~/.agents/skills/</code>, and merges these into <code>~/.claude/settings.json</code>
-    <code>permissions.deny</code>:</p>
+    <p>Writes the skill built into the sec binary to <code>~/.claude/skills/sec</code>,
+    <code>~/.agents/skills/sec</code> and <code>$CLAUDE_CONFIG_DIR/skills/sec</code> (no checkout
+    needed; <code>--from DIR</code> links a checkout instead), and merges these into each Claude
+    <code>settings.json</code> <code>permissions.deny</code>. <code>sec remote install|upgrade</code> and
+    <code>sec sync --install</code> install it on the far end too (<code>--no-skill</code> skips it):</p>
 <pre class="block">Read(~/.config/sec/**)     # the vault and the identity
 Read(**/.env*)             # the files sec writes for you
 Bash(sec get:*)            # the print path
 Bash(sec export:*)         # the bulk print path</pre>
     <p>So the harness refuses, not the model.</p>
+
+    <h2 id="project">sec use · sec project</h2>
+    <p>Secrets can belong to a project and an environment. Address them as <code>reqsume:NAME</code>,
+    <code>reqsume@production:NAME</code> or <code>@dev:NAME</code> anywhere a name goes. Bare names resolve
+    in the current context: project@env, then project, then global.</p>
+<pre class="block">sec use reqsume --env production     # saved in context.json; SEC_PROJECT/SEC_ENV override
+sec use                              # show the current context
+sec use --unset                      # back to the global namespace
+sec import .env.production --project reqsume --env production
+sec ls --project reqsume --env production
+sec project ls                       # projects, environments, counts</pre>
+
+    <h2 id="file">sec file · sec tag</h2>
+    <p>Whole files and folders (service-account JSON, cert folders) are secrets too. Tags group them.</p>
+<pre class="block">sec file add ~/Downloads/sa.json           # -> SA_JSON
+sec file add ./certs TLS_CERTS --tag reqsume
+sec file get TLS_CERTS -o ./certs          # stdout as-is without -o (folder = tar.gz)
+sec file ls [--tag T]
+sec tag SA_JSON reqsume,firebase           # replace tags; --add to append</pre>
+
+    <h2 id="remote">sec remote</h2>
+    <p>Put sec on another machine, container or pod (any <code>sync</code> route), or bring it to this
+    version. No secrets move; never root, sudo or Administrator. Owner only, except <code>status</code>.</p>
+<pre class="block">sec remote status ssh://db
+sec remote install ssh://web+docker://api [--dry]
+sec remote upgrade ssh://db                 # same sha256 = no-op; keeps sec.prev; rolls back on failure
+sec remote uninstall ssh://db               # keeps the vault
+sec remote uninstall ssh://db --purge       # owner at a real terminal only</pre>
+
+    <h2 id="seal">sec seal</h2>
+    <p>The reverse of render: puts <code>{{NAME}}</code> back where a file holds real values.</p>
+<pre class="block">sec seal config.yaml
+sec seal notes.md --check     # exit 1 if a live value is found</pre>
+
+    <h2 id="agent">sec agent · sec sh · sec hook</h2>
+<pre class="block">sec agent claude      # every paste and Enter is checked for secrets before the agent sees it
+sec sh -c '...'       # a shell for agents: secret-file reads refused, {{NAME}} filled, output redacted
+sec hook --client claude   # pre-tool guard, wired by sec skill install</pre>
+
+    <h2 id="readonly">Read-only vaults (CI, e2e tests)</h2>
+    <p>With <code>SEC_READONLY=1</code> a vault can be used but never changed: only <code>ls run exec
+    render seal keys where logs audit env id use project</code> run; every write is refused, including
+    through the Go package.</p>
+<pre class="block">SEC_READONLY=1 sec run DB_URL,API_TOKEN -- npm run e2e</pre>
+
+    <h2 id="go">Go package</h2>
+    <p><code>github.com/muthuishere/secure-agent/pkg/vault</code> opens the same vault from a Go program.
+    No export path; every read is audited with the caller's label.</p>
+<pre class="block">v, _ := vault.OpenAs("myapp")
+token, _ := v.Get("API_TOKEN")      // pass straight to a client, never print
+names, _ := v.List()
+clean := vault.Redact(out, map[string]string{"API_TOKEN": token})</pre>
 
     <div class="note warnbox" style="margin-top:44px">
       <b>Threat model.</b> sec defends against sloppiness and logs — secrets in transcripts, guides,

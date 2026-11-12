@@ -174,7 +174,7 @@
         <div class="n">04</div>
         <h3>The audit log is local</h3>
         <p><code>sec logs</code> is one machine's history. There is no shared, team-wide log — for that, use a
-        team tool (or vsync's bucket log for repo-scoped secrets).</p>
+        team tool.</p>
       </div>
     </div>
   </div>
@@ -226,7 +226,7 @@
       <div class="verb"><b>git-ops config</b><span>sops + age. It's the right shape for encrypted files in a repo, and sec doesn't try to replace it.</span></div>
       <div class="verb"><b>AWS-only</b><span>Secrets Manager with the agent deny hook. One cloud, one story, no extra tool.</span></div>
       <div class="verb"><b>you + your agents</b><span><em>sec.</em> Output redaction, argv and config files, a copy ledger that reaches servers and containers, no service to run.</span></div>
-      <div class="verb"><b>repo + env, small team</b><span>vsync for the per-repo, per-environment vault; sec on top for agents and placements.</span></div>
+      <div class="verb"><b>repo + env, small team</b><span><em>sec</em> projects and environments (<code>myapp@prod:NAME</code>), sync to each server or container, copy ledger for rotation.</span></div>
     </div>
   </div>
 </section>

@@ -102,6 +102,15 @@ run next — and a wrong usage prints the closest correct command.
   context: `sec import .env.production --project reqsume --env production`. `sec ls` shows
   PROJECT/ENV, `sec project ls` counts per project and env. `sync`/`push` to another sec carry
   the scope (the far end needs this version to accept a scoped name).
+- **Files and tags**: `sec file add PATH [NAME] [--tag a,b]` stores a whole file or folder,
+  `sec file get NAME [-o PATH]` gives it back (stdout as-is; a folder as tar.gz), `sec file ls`.
+  `sec tag NAME a,b [--add]` sets tags on any secret or file; `sec ls --tag T` filters.
+- **Read-only vaults**: `SEC_READONLY=1` (CI jobs, e2e test runs) allows only commands that use
+  values — `ls run exec render seal keys where logs audit env id use project` — and refuses every
+  write, in the CLI and in the Go package.
+- **Go package**: `github.com/muthuishere/secure-agent/pkg/vault` — `Open`/`OpenAs(caller)`, `Get`,
+  `Set`, `List`, `Has`, `Redact`, `NewRedactor`. Same vault, identity and headless rules as the CLI;
+  no export path; every `Get`/`Set` audited with the caller label.
 - **`sec get NAME --out FILE`**: for a program/daemon with no TTY — the raw value goes to a new
   0600 file (O_EXCL: an existing file or symlink is refused), never to stdout; open to agents like
   `render`, audited as `get.out`.

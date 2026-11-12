@@ -280,9 +280,9 @@ activity in the last 30 days (3):
     everything else with the exact command to run. <code>--dry</code> changes nothing.
     <code>sec keys</code> answers "what is this project missing"; <code>sec logs</code> answers "what
     happened".</p>
-    <p class="cap">sec is a flat, personal vault. Secrets scoped to a repo and an environment —
-    <code>myapp/prod</code> vs <code>myapp/dev</code>, shared with a team — belong in
-    <b>vsync</b>.</p>
+    <p class="cap">Secrets can be scoped to a project and an environment —
+    <code>myapp@prod:DB_PW</code> vs <code>myapp@dev:DB_PW</code> — with <code>sec use myapp --env prod</code>
+    setting the default.</p>
   </div>
 </section>
 

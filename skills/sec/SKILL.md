@@ -78,6 +78,9 @@ sec run STRIPE_KEY,DB_URL=DATABASE_URL -- go test ./...          # as env vars
 
 Owner = a TTY on stdin or `SEC_OWNER=1`. Never set `SEC_OWNER` yourself.
 
+`SEC_READONLY=1` (CI, e2e runs) means the vault can only be used: `ls run exec render seal keys
+where logs audit env id use project`. Anything else is refused — report it, don't work around it.
+
 **sec sync trust:** the remote key is pinned per target (TOFU). First contact needs the owner
 (or the owner saves it: `sec target add db-key age1…`). If sync says **REMOTE KEY CHANGED**,
 stop and tell the owner — it may be an impersonated host; only they `--repin`. If it says
@@ -123,8 +126,6 @@ and ask for a **name**, never for the value.
 `sec identity` shows where the key lives (never the key). "no usable identity" → report the
 commands it prints and stop. **Never run `sec init` to fix it** — on a synced vault that orphans
 every secret.
-
-## Scope
 
 ## Projects and environments
 
