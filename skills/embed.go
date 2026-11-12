@@ -54,7 +54,7 @@ func Current(dst string) bool {
 // Owns reports whether a top-level entry name in an installed skill folder is
 // one sec writes (current files, the marker, or the lone legacy SKILL.md).
 func Owns(name string) bool {
-	if name == Marker {
+	if name == Marker || name == "scenarios.md" { // scenarios.md: where an earlier build kept it
 		return true
 	}
 	_, err := fs.Stat(files, "sec/"+name)
