@@ -6,11 +6,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/muthuishere/secure-agent/internal/envfile"
-	"github.com/muthuishere/secure-agent/internal/gen"
-	"github.com/muthuishere/secure-agent/internal/owner"
-	"github.com/muthuishere/secure-agent/internal/place"
-	"github.com/muthuishere/secure-agent/internal/store"
+	"github.com/muthuishere/sec/internal/envfile"
+	"github.com/muthuishere/sec/internal/gen"
+	"github.com/muthuishere/sec/internal/owner"
+	"github.com/muthuishere/sec/internal/place"
+	"github.com/muthuishere/sec/internal/store"
 )
 
 func init() {

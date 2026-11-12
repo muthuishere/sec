@@ -19,7 +19,7 @@
       <li><a href="./">Home</a></li>
       <li><a href="compare.html">Compare</a></li>
       <li><a href="docs.html" aria-current="page">Docs</a></li>
-      <li><a href="https://github.com/muthuishere/secure-agent">GitHub</a></li>
+      <li><a href="https://github.com/muthuishere/sec">GitHub</a></li>
     </ul>
   </div>
 </nav>
@@ -69,7 +69,7 @@
     </div>
 
     <h2 id="install">Install</h2>
-<pre class="block">git clone https://github.com/muthuishere/secure-agent &amp;&amp; cd secure-agent
+<pre class="block">git clone https://github.com/muthuishere/sec &amp;&amp; cd sec
 task install        # build → ~/.local/bin/sec → link the agent skill → add harness deny rules
 sec init</pre>
     <p><code>task install</code> also runs <a href="#skill"><code>sec skill install</code></a>. Home is
@@ -440,7 +440,7 @@ sec hook --client claude   # pre-tool guard, wired by sec skill install</pre>
 <pre class="block">SEC_READONLY=1 sec run DB_URL,API_TOKEN -- npm run e2e</pre>
 
     <h2 id="go">Go package</h2>
-    <p><code>github.com/muthuishere/secure-agent/pkg/vault</code> opens the same vault from a Go program.
+    <p><code>github.com/muthuishere/sec/pkg/vault</code> opens the same vault from a Go program.
     No export path; every read is audited with the caller's label.</p>
 <pre class="block">v, _ := vault.OpenAs("myapp")
 token, _ := v.Get("API_TOKEN")      // pass straight to a client, never print
@@ -461,7 +461,7 @@ clean := vault.Redact(out, map[string]string{"API_TOKEN": token})</pre>
 <footer>
   <div class="wrap">
     <div>sec — a credentials broker for humans and their agents.</div>
-    <div><a href="https://github.com/muthuishere/secure-agent">github.com/muthuishere/secure-agent</a></div>
+    <div><a href="https://github.com/muthuishere/sec">github.com/muthuishere/sec</a></div>
   </div>
 </footer>
 

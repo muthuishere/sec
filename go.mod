@@ -1,4 +1,4 @@
-module github.com/muthuishere/secure-agent
+module github.com/muthuishere/sec
 
 go 1.26.3
 

@@ -9,9 +9,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/muthuishere/secure-agent/internal/bundle"
-	"github.com/muthuishere/secure-agent/internal/place"
-	"github.com/muthuishere/secure-agent/internal/store"
+	"github.com/muthuishere/sec/internal/bundle"
+	"github.com/muthuishere/sec/internal/place"
+	"github.com/muthuishere/sec/internal/store"
 )
 
 func init() {

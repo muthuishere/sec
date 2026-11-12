@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/muthuishere/secure-agent/internal/owner"
+	"github.com/muthuishere/sec/internal/owner"
 )
 
 func init() {

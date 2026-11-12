@@ -7,8 +7,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/muthuishere/secure-agent/internal/bundle"
-	"github.com/muthuishere/secure-agent/internal/owner"
+	"github.com/muthuishere/sec/internal/bundle"
+	"github.com/muthuishere/sec/internal/owner"
 )
 
 func init() {

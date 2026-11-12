@@ -14,8 +14,8 @@ import (
 	"os"
 	"sync"
 
-	"github.com/muthuishere/secure-agent/internal/redact"
-	"github.com/muthuishere/secure-agent/internal/store"
+	"github.com/muthuishere/sec/internal/redact"
+	"github.com/muthuishere/sec/internal/store"
 )
 
 // Vault is safe for concurrent use by one long-lived process. Each call reads

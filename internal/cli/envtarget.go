@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/muthuishere/secure-agent/internal/envfile"
+	"github.com/muthuishere/sec/internal/envfile"
 )
 
 // envDepth bounds dotenv discovery. Four levels reaches

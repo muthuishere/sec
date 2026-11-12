@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/muthuishere/secure-agent/internal/owner"
-	"github.com/muthuishere/secure-agent/internal/store"
+	"github.com/muthuishere/sec/internal/owner"
+	"github.com/muthuishere/sec/internal/store"
 )
 
 // Moving secrets to another sec without ssh: `sec export --for KEY` seals

@@ -8,7 +8,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/muthuishere/secure-agent/internal/store"
+	"github.com/muthuishere/sec/internal/store"
 )
 
 func newVault(t *testing.T) *Vault {

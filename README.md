@@ -108,7 +108,7 @@ run next — and a wrong usage prints the closest correct command.
 - **Read-only vaults**: `SEC_READONLY=1` (CI jobs, e2e test runs) allows only commands that use
   values — `ls run exec render seal keys where logs audit env id use project` — and refuses every
   write, in the CLI and in the Go package.
-- **Go package**: `github.com/muthuishere/secure-agent/pkg/vault` — `Open`/`OpenAs(caller)`, `Get`,
+- **Go package**: `github.com/muthuishere/sec/pkg/vault` — `Open`/`OpenAs(caller)`, `Get`,
   `Set`, `List`, `Has`, `Redact`, `NewRedactor`. Same vault, identity and headless rules as the CLI;
   no export path; every `Get`/`Set` audited with the caller label.
 - **`sec get NAME --out FILE`**: for a program/daemon with no TTY — the raw value goes to a new

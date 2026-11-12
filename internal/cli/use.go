@@ -5,11 +5,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/muthuishere/secure-agent/internal/execx"
-	"github.com/muthuishere/secure-agent/internal/owner"
-	"github.com/muthuishere/secure-agent/internal/place"
-	"github.com/muthuishere/secure-agent/internal/store"
-	"github.com/muthuishere/secure-agent/internal/tmpl"
+	"github.com/muthuishere/sec/internal/execx"
+	"github.com/muthuishere/sec/internal/owner"
+	"github.com/muthuishere/sec/internal/place"
+	"github.com/muthuishere/sec/internal/store"
+	"github.com/muthuishere/sec/internal/tmpl"
 )
 
 func init() {

@@ -7,8 +7,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/muthuishere/secure-agent/internal/owner"
-	"github.com/muthuishere/secure-agent/internal/store"
+	"github.com/muthuishere/sec/internal/owner"
+	"github.com/muthuishere/sec/internal/store"
 )
 
 // Projects and environments. A secret's identity is (project, env, NAME);
