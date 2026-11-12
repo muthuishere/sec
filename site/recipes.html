@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>sec — recipes</title>
+<meta name="description" content="Task-oriented recipes for sec: call an API with a key, set up a .env, put certs on a server, secrets into a k8s pod, CI, a leaked key, Windows.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <a class="logo" href="./"><em>sec</em> —&nbsp;credentials broker</a>
+    <ul>
+      <li><a href="./">Home</a></li>
+      <li><a href="docs.html">Docs</a></li>
+      <li><a href="recipes.html" aria-current="page">Recipes</a></li>
+      <li><a href="compare.html">Compare</a></li>
+      <li><a href="https://github.com/muthuishere/sec">GitHub</a></li>
+    </ul>
+  </div>
+</nav>
+
+<header class="hero" style="padding-bottom:20px">
+  <div class="wrap">
+    <div class="kicker">recipes</div>
+    <h1>Task first, verb second.</h1>
+    <p class="lede">Worked flows for the things you actually do. Steps marked <b>[owner]</b> need the owner
+    (a terminal on stdin, or <code>SEC_OWNER=1</code>) — an agent hands them over as an exact command.
+    Unsure which verb moves secrets? <code>sec help move</code>.</p>
+  </div>
+</header>
+
+<section class="doc" style="padding-top:10px">
+  <div class="wrap">
+
+    <div class="toc">
+      <ul>
+        <li><a href="#api">Call an API with a key</a></li>
+        <li><a href="#envvars">A tool wants env vars</a></li>
+        <li><a href="#dotenv">Set up a repo&#x27;s .env</a></li>
+        <li><a href="#pasted">Someone pasted a secret in chat</a></li>
+        <li><a href="#gen">A new password or token</a></li>
+        <li><a href="#file">A daemon with no TTY needs a value in a file</a></li>
+        <li><a href="#certs">A certs folder onto a server</a></li>
+        <li><a href="#k8s">Secrets into a k8s pod, via ssh</a></li>
+        <li><a href="#remote">Put or upgrade sec on a remote box</a></li>
+        <li><a href="#offline">A new machine with no connection</a></li>
+        <li><a href="#ci">CI or e2e with a read-only vault</a></li>
+        <li><a href="#leak">A key leaked</a></li>
+        <li><a href="#ok">Is everything in sync / healthy</a></li>
+        <li><a href="#seal">Before committing or sharing a file</a></li>
+        <li><a href="#project">Work in one project and environment</a></li>
+        <li><a href="#gh">A GitHub or GCP secret</a></li>
+        <li><a href="#windows">Windows</a></li>
+      </ul>
+    </div>
+
+    <h2 id="api">Call an API with a key</h2>
+<pre class="block">sec ls --json                                   # is the name there?
+sec exec -- curl -sS https://api.x.com -H "Authorization: Bearer {{STRIPE_KEY}}"
+# output comes back with [REDACTED:STRIPE_KEY] — that is normal</pre>
+    <p>Not in the vault? <b>[owner]</b> <code>sec set STRIPE_KEY --source &lt;url&gt; --place</code>. An agent never fetches it itself.</p>
+
+    <h2 id="envvars">A tool wants env vars</h2>
+<pre class="block">sec run STRIPE_KEY,DB_URL=DATABASE_URL -- go test ./...</pre>
+    <p>Values exist only in the child's environment; output is scrubbed.</p>
+
+    <h2 id="dotenv">Set up a repo&#x27;s .env</h2>
+<pre class="block">sec env list                                    # re-scans: environment → file → key count
+sec import .env.production --project reqsume --env production   # owner has a real file
+sec render .env.template --out .env             # write it from the vault…
+sec env write .env DB_PW=DATABASE_PASSWORD      # …or key by key
+sec keys                                        # exit 1 lists keys the project still lacks</pre>
+    <p>Ask which environment if it is unclear; never reuse an old path.</p>
+
+    <h2 id="pasted">Someone pasted a secret in chat</h2>
+<pre class="block">sec set NAME <<'EOF'
+…
+EOF
+sec rotate NAME                                 # recommended: the value transited chat</pre>
+    <p>From then on use <code>{{NAME}}</code>. Never repeat the value.</p>
+
+    <h2 id="gen">A new password or token</h2>
+<pre class="block">sec gen --save DB_PW --env .env=DB_PASSWORD
+sec gen --save SESSION_KEY --hex --len 32</pre>
+    <p>Never invent one yourself; never print it.</p>
+
+    <h2 id="file">A daemon with no TTY needs a value in a file</h2>
+<pre class="block">sec get NAME --out /run/app/pgpass             # NEW 0600 file; refuses existing file or symlink</pre>
+    <p>Audited. For a whole config use <code>sec render</code>.</p>
+
+    <h2 id="certs">A certs folder onto a server</h2>
+<pre class="block">sec file add ./certs TLS                        # or: sec file add ./sa.json  → SA_JSON
+sec push SA_JSON ./app/sa.json                  # locally, where the program reads it
+sec push TLS ssh://web/etc/app/certs            # on a server
+sec push TLS ssh://web+docker://api/run/certs   # inside a container on that server
+sec where TLS                                   # every place it lives</pre>
+    <p><b>[owner]</b> the first push to another machine. After that <code>sec rotate</code> and <code>sec ok</code> keep every copy current.</p>
+
+    <h2 id="k8s">Secrets into a k8s pod, via ssh</h2>
+<pre class="block">sec sync --dry DB_PW,API_KEY ssh://bastion+k8s://prod/api-7d9f   # names + remote key fingerprint, nothing sent
+sec sync DB_PW,API_KEY ssh://bastion+k8s://prod/api-7d9f
+sec sync DB_PW k8s://[context/]ns/pod[/container]            # direct, when kubectl reaches it</pre>
+    <p><b>[owner]</b> first contact pins the remote key (or <code>sec target add web-key age1…</code> once). "sec not found" → <b>[owner]</b> <code>sec sync … --install</code>. "REMOTE KEY CHANGED" → stop and tell the owner; never <code>--repin</code> yourself. Also <code>docker://</code>, <code>podman://</code>, jump hosts <code>ssh://bastion+ssh://db</code>.</p>
+
+    <h2 id="remote">Put or upgrade sec on a remote box</h2>
+<pre class="block">sec remote status ssh://db                      # its version vs this one, vault y/n
+sec remote upgrade ssh://db                     # keeps sec.prev, rolls back on failure
+sec remote uninstall ssh://db                   # keeps its vault</pre>
+    <p><b>[owner]</b> install / upgrade / uninstall; <code>--purge</code> only at a real terminal. No secrets move.</p>
+
+    <h2 id="offline">A new machine with no connection</h2>
+<pre class="block">sec id                                          # there → age1…
+sec export --only A,B --for age1… --out x.sec   # here  [owner]
+sec import x.sec                                # there</pre>
+    <p><b>[owner]</b> <code>sec export</code>. Works over email, USB, air gap.</p>
+
+    <h2 id="ci">CI or e2e with a read-only vault</h2>
+<pre class="block">SEC_READONLY=1 sec run DB_PW -- ./e2e.sh</pre>
+    <p>Only <code>ls run exec render seal keys where logs audit env id use project</code> work. Anything else is refused — report it; do not look for a way around.</p>
+
+    <h2 id="leak">A key leaked</h2>
+<pre class="block">sec where NAME                                  # where it lives
+sec audit --name NAME --since 7d                # who used it
+sec rotate NAME --gen --hook ./alter-user.sh    # or owner pastes the new one: sec rotate NAME
+sec audit --retired                             # old versions still to revoke at the provider</pre>
+    <p>Then <code>sec rotate NAME --purge</code> once revoked upstream.</p>
+
+    <h2 id="ok">Is everything in sync / healthy</h2>
+<pre class="block">sec ok --dry                                    # report only
+sec ok                                          # re-push stale copies, list missing keys + old versions</pre>
+
+    <h2 id="seal">Before committing or sharing a file</h2>
+<pre class="block">sec seal FILE --check                           # exit 1 = a real value is in it
+sec seal FILE                                   # put {{NAME}} back</pre>
+
+    <h2 id="project">Work in one project and environment</h2>
+<pre class="block">sec use reqsume --env dev                       # show: sec use · clear: sec use --unset
+sec exec -- psql "{{reqsume@production:DB_URL}}"   # or inline, per value</pre>
+    <p>Or per command <code>--project P --env E</code>.</p>
+
+    <h2 id="gh">A GitHub or GCP secret</h2>
+<pre class="block">sec place NAME --gh owner/repo[:env]
+sec place NAME --gcp my-project</pre>
+    <p>Never <code>gh secret set</code> by hand; the placement is recorded so rotate re-pushes it.</p>
+
+    <h2 id="windows">Windows</h2>
+<pre class="block">curl.exe -fsSL https://raw.githubusercontent.com/muthuishere/sec/main/install.cmd -o "%TEMP%\sec-install.cmd" &amp;&amp; "%TEMP%\sec-install.cmd"
+sec init
+sec sync DB_PW ssh://winbox --install           # [owner] detects PowerShell on the far end</pre>
+    <p>Same verbs on Windows; <code>--install</code> streams the right build, no admin needed.</p>
+
+    <div class="note">
+      <b>Which verb moves secrets?</b> Another sec you can reach → <code>sec sync</code>. A program that reads a
+      file / .env / folder → <code>sec push</code>. No connection → <code>sec export --for</code> + <code>sec import</code>.
+      sec itself → <code>sec remote</code>. Full flags: <a href="docs.html">docs</a>.
+    </div>
+
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div>sec — a credentials broker for humans and their agents.</div>
+    <div><a href="https://github.com/muthuishere/sec">github.com/muthuishere/sec</a></div>
+  </div>
+</footer>
+
+</body>
+</html>

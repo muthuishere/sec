@@ -102,8 +102,8 @@ var docs = map[string]helpDoc{
 		next:     "every paste and Enter is checked for secrets before the agent sees it"},
 	"hook": {group: "setup",
 		syntax:   []string{"sec hook --client claude"},
-		examples: []string{"sec hook --client claude   # wired by sec skill install"},
-		next:     "sec skill install"},
+		examples: []string{"sec hook --client claude   # wired by sec agent claude (this session)"},
+		next:     "sec agent claude"},
 
 	"sync": {group: "move",
 		syntax:   []string{"sec sync NAME[,NAME] WHERE [--dry] [--install] [--repin] [--remote-sec PATH]", "sec sync NAME[,NAME] --from WHERE [--dry]"},

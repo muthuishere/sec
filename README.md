@@ -33,7 +33,7 @@ sec ok                                                     # check everything, r
 ```
 
 More worked examples — env vars, `.env`, Docker volumes, servers, another sec, containers, templates:
-[docs/examples.md](docs/examples.md). Full reference: the [docs page](site/docs.html).
+[docs/examples.md](docs/examples.md). Full reference: the [docs page](site/docs.html); task-first flows: [recipes](site/recipes.html).
 
 ## Why
 
@@ -71,10 +71,21 @@ and can `sec ls` for a name whose value it was never shown.
 
 ## Install
 
-macOS / Linux: `curl -fsSL https://raw.githubusercontent.com/muthuishere/sec/main/install.sh | sh`
-Windows (cmd): `curl.exe -fsSLO https://raw.githubusercontent.com/muthuishere/sec/main/install.cmd && install.cmd`
+```bash
+# macOS / Linux
+curl -fsSL https://raw.githubusercontent.com/muthuishere/sec/main/install.sh | sh
+```
 
-Both install `sec` and the agent skill; re-run to upgrade. After that, any `sec` run refreshes an installed skill by itself when the binary is newer.
+```bat
+:: Windows (cmd)
+curl.exe -fsSL https://raw.githubusercontent.com/muthuishere/sec/main/install.cmd -o "%TEMP%\sec-install.cmd" && "%TEMP%\sec-install.cmd"
+```
+
+Both install `sec` and, on first run, the agent skill (the `skills/sec/` folder: `SKILL.md` plus
+`references/`). Re-run to upgrade. After that, any `sec` run refreshes an installed skill by itself
+when the binary is newer.
+
+Site: [index](site/index.html) · [docs](site/docs.html) · [recipes](site/recipes.html) · [compare](site/compare.html).
 
 From a checkout:
 

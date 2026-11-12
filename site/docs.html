@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>sec — docs &amp; command reference</title>
-<meta name="description" content="Install, model, and the full command reference for sec: exec, run, render, gen, place, push, rotate, ok, keys, logs, export, identity, cert.">
+<meta name="description" content="Install, concepts and the full command reference for sec, grouped like sec help: use, store, move, audit &amp; rotate, agents, CI, the Go package, owner-only rules and the threat model.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -17,8 +17,9 @@
     <a class="logo" href="./"><em>sec</em> —&nbsp;credentials broker</a>
     <ul>
       <li><a href="./">Home</a></li>
-      <li><a href="compare.html">Compare</a></li>
       <li><a href="docs.html" aria-current="page">Docs</a></li>
+      <li><a href="recipes.html">Recipes</a></li>
+      <li><a href="compare.html">Compare</a></li>
       <li><a href="https://github.com/muthuishere/sec">GitHub</a></li>
     </ul>
   </div>
@@ -28,110 +29,244 @@
   <div class="wrap">
     <div class="kicker">documentation</div>
     <h1>Every verb, every flag.</h1>
-    <p class="lede">Flags below are taken from the binary's own <code>-h</code> output. If they drift,
-    the binary is right and this page is wrong.</p>
+    <p class="lede">Grouped the way <code>sec help</code> groups them. Flags are taken from the binary's
+    own <code>sec help &lt;cmd&gt;</code>; if they drift, the binary is right and this page is wrong.
+    For end-to-end walkthroughs see <a href="recipes.html">recipes</a>.</p>
   </div>
 </header>
 
 <section class="doc" style="padding-top:10px">
   <div class="wrap">
 
-    <div class="toc">
-      <ul>
-        <li><a href="#install">install</a></li>
-        <li><a href="#model">the model</a></li>
-        <li><a href="#init">sec init</a></li>
-        <li><a href="#set">sec set</a></li>
-        <li><a href="#gen">sec gen</a></li>
-        <li><a href="#exec">sec exec</a></li>
-        <li><a href="#run">sec run</a></li>
-        <li><a href="#render">sec render</a></li>
-        <li><a href="#env">sec env</a></li>
-        <li><a href="#import">sec import</a></li>
-        <li><a href="#export">sec export</a></li>
-        <li><a href="#place">sec place</a></li>
-        <li><a href="#sync">sec sync</a></li>
-        <li><a href="#push">sec push</a></li>
-        <li><a href="#target">sec target</a></li>
-        <li><a href="#rotate">sec rotate</a></li>
-        <li><a href="#where">sec where</a></li>
-        <li><a href="#audit">sec audit</a></li>
-        <li><a href="#ls">sec ls / rm / get</a></li>
-        <li><a href="#keys">sec keys</a></li>
-        <li><a href="#logs">sec logs</a></li>
-        <li><a href="#ok">sec ok</a></li>
-        <li><a href="#id">sec id</a></li>
-        <li><a href="#identity">sec identity</a></li>
-        <li><a href="#recipients">sec recipients</a></li>
-        <li><a href="#cert">sec cert</a></li>
-        <li><a href="#skill">sec skill</a></li>
-      </ul>
+    <div class="toc docs-toc">
+      <div class="toc-group"><b><a href="#install">1 · Install &amp; upgrade</a></b>
+        <a href="#install-oneliner">one-liners</a> <a href="#install-what">what they do</a>
+        <a href="#install-binary">bare binary</a> <a href="#install-source">from source</a>
+        <a href="#upgrade">upgrade</a> <a href="#windows">Windows notes</a></div>
+      <div class="toc-group"><b><a href="#quickstart">2 · Quickstart</a></b>
+        <a href="#init">init</a></div>
+      <div class="toc-group"><b><a href="#concepts">3 · Concepts</a></b>
+        <a href="#vault">vault &amp; identity</a> <a href="#owner">owner vs agent</a>
+        <a href="#redaction">redaction</a> <a href="#ledger">placements</a>
+        <a href="#project">projects &amp; envs</a></div>
+      <div class="toc-group"><b><a href="#use">4 · Use</a></b>
+        <a href="#exec">exec</a> <a href="#run">run</a> <a href="#render">render</a>
+        <a href="#env">env</a> <a href="#sh">sh</a> <a href="#seal">seal</a> <a href="#get">get</a></div>
+      <div class="toc-group"><b><a href="#store">5 · Store</a></b>
+        <a href="#set">set</a> <a href="#gen">gen</a> <a href="#file">file</a> <a href="#tag">tag</a>
+        <a href="#import">import</a> <a href="#ls">ls · rm</a> <a href="#use-cmd">use · project</a></div>
+      <div class="toc-group"><b><a href="#move">6 · Move</a></b>
+        <a href="#move-table">which verb?</a> <a href="#sync">sync</a> <a href="#routes">routes &amp; + chains</a>
+        <a href="#push">push</a> <a href="#target">target</a> <a href="#remote">remote</a>
+        <a href="#export">export</a> <a href="#id">id</a> <a href="#recipients">recipients</a></div>
+      <div class="toc-group"><b><a href="#audit-rotate">7 · Audit &amp; rotate</a></b>
+        <a href="#where">where</a> <a href="#logs">logs</a> <a href="#audit">audit</a>
+        <a href="#keys">keys</a> <a href="#ok">ok</a> <a href="#place">place</a> <a href="#rotate">rotate</a></div>
+      <div class="toc-group"><b><a href="#agents">8 · Agents</a></b>
+        <a href="#skill">skill</a> <a href="#deny">deny rules</a> <a href="#agent">agent</a>
+        <a href="#hook">hook</a> <a href="#sh-agents">sh</a></div>
+      <div class="toc-group"><b><a href="#readonly">9 · CI / read-only</a></b></div>
+      <div class="toc-group"><b><a href="#go">10 · Go package</a></b></div>
+      <div class="toc-group"><b><a href="#owner-only">11 · Owner-only matrix</a></b></div>
+      <div class="toc-group"><b><a href="#threat">12 · Threat model</a></b>
+        <a href="#identity">identity</a> <a href="#cert">cert</a></div>
     </div>
 
-    <h2 id="install">Install</h2>
-<pre class="block">git clone https://github.com/muthuishere/sec &amp;&amp; cd sec
-task install        # build → ~/.local/bin/sec → link the agent skill → add harness deny rules
-sec init</pre>
-    <p><code>task install</code> also runs <a href="#skill"><code>sec skill install</code></a>. Home is
-    <code>~/.config/sec</code>, override with <code>SEC_HOME</code> (useful for a throwaway vault in a
-    test).</p>
+    <!-- 1 -->
+    <h2 id="install">1 · Install &amp; upgrade</h2>
+    <h3 id="install-oneliner">One line</h3>
+<pre class="block"># macOS / Linux
+curl -fsSL https://raw.githubusercontent.com/muthuishere/sec/main/install.sh | sh
 
-    <h2 id="model">The model</h2>
+# Windows (cmd, no PowerShell)
+curl.exe -fsSL https://raw.githubusercontent.com/muthuishere/sec/main/install.cmd -o "%TEMP%\sec-install.cmd" &amp;&amp; "%TEMP%\sec-install.cmd"</pre>
+
+    <h3 id="install-what">What the installers do</h3>
     <ul>
-      <li><b>Vault</b> — <code>~/.config/sec/vault/NAME.age</code> (age X25519, <code>filippo.io/age</code>)
-        plus <code>NAME.json</code> metadata. Ciphertext and names only: safe to commit to a private repo
-        or <code>rclone sync</code>. Syncing is not sec's job.</li>
-      <li><b>Identity</b> — <code>SEC_IDENTITY</code> env &gt; OS keyring &gt; <code>identity.txt</code> (0400).
-        macOS and Windows default to the keyring; Linux, BSD, containers and CI default to the
-        <b>file</b>, because a server has no Secret Service and a desktop one is DBus that can block on
-        an unlock prompt nobody will answer in cron.</li>
-      <li><b>Owner vs agent</b> — a TTY on stdin, or <code>SEC_OWNER=1</code>, is the owner.
-        <code>get --print</code>, <code>export</code> and <code>--allow-output-only</code> need it.
-        Agent harnesses run with a piped stdin, so they never have it.</li>
-      <li><b>Redaction</b> — <code>exec</code> and <code>run</code> scrub each value plus its base64
-        (with and without trailing newline), hex, URL-encoded and JSON-escaped forms from stdout and
-        stderr. Matching is <b>newline-tolerant</b> — the stream is also searched with <code>\r</code> and
-        <code>\n</code> removed, so a value wrapped across lines (<code>xxd -p</code> at 60 columns,
-        GNU <code>base64</code> at 76, <code>fold</code>) is still caught. The tail of the stream is
-        held back briefly so a match cannot slip through the seam, so output can lag a few hundred
-        bytes behind a long-running command.</li>
-      <li><b>Placement ledger</b> — <code>env write</code>, <code>render</code>, <code>import</code>,
-        <code>gen --env</code> and <code>place</code> all record where a value went; <code>rotate</code>
-        replays them.</li>
+      <li>Install into <code>$SEC_BIN_DIR</code>, default <code>~/.local/bin</code>
+        (<code>%USERPROFILE%\.local\bin</code> on Windows). Never root or Administrator.</li>
+      <li>If <code>go</code> is on PATH (and <code>SEC_NO_GO</code> is unset) they run
+        <code>go install github.com/muthuishere/sec/cmd/sec@latest</code>; otherwise they download the
+        latest release binary for your OS/arch.</li>
+      <li>PATH: <code>install.sh</code> appends <code>export PATH=…  # sec</code> once to
+        <code>~/.zshrc</code>, <code>~/.bashrc</code> or <code>~/.profile</code> (by <code>$SHELL</code>);
+        <code>install.cmd</code> adds the folder to your <b>user</b> PATH with <code>setx</code>. Open a
+        new shell afterwards.</li>
+      <li>Finally run <a href="#skill"><code>sec skill install</code></a> (skill into
+        <code>~/.claude/skills</code> and <code>~/.agents/skills</code>, plus harness deny rules) and
+        print the version.</li>
+    </ul>
+
+    <h3 id="install-binary">Bare binary</h3>
+    <p>Release binaries are built for <code>linux</code>, <code>darwin</code> and <code>windows</code> on
+    <code>amd64</code> and <code>arm64</code>, named
+    <code>sec_&lt;os&gt;_&lt;arch&gt;</code> (<code>.exe</code> on Windows) at
+    <code>https://github.com/muthuishere/sec/releases/latest/download/</code>. Drop one on PATH and run
+    anything: the <b>first run</b> installs the agent skill into every skill root that has none and adds
+    the deny rules, then leaves a <code>skill-installed</code> stamp in the sec home so it happens once
+    — a skill you later remove stays removed.</p>
+
+    <h3 id="install-source">From source</h3>
+<pre class="block">git clone https://github.com/muthuishere/sec &amp;&amp; cd sec &amp;&amp; task install
+sec init</pre>
+
+    <h3 id="upgrade">Upgrade</h3>
+    <p>Re-run the one-liner. After that, every <code>sec</code> run keeps the installed skill current:
+    a skill folder sec wrote that differs from the one built into the binary is rewritten in place.
+    Symlinked skills (a dev checkout) and folders holding other files are left alone. To upgrade sec on
+    <i>another</i> machine use <a href="#remote"><code>sec remote upgrade</code></a>.</p>
+
+    <h3 id="windows">Windows notes</h3>
+    <ul>
+      <li>The installer is plain cmd + <code>curl.exe</code> (built into Windows 10+); it picks
+        <code>arm64</code> when <code>PROCESSOR_ARCHITECTURE</code> is ARM64, else <code>amd64</code>.</li>
+      <li>The identity defaults to the Windows credential store (keyring), like macOS.</li>
+      <li><code>sec sync --install</code> / <code>sec remote install</code> detect a Windows far end via
+        PowerShell and install into <code>%LOCALAPPDATA%\Programs\sec</code> — no Administrator.</li>
+      <li>Home is <code>%USERPROFILE%\.config\sec</code> unless <code>SEC_HOME</code> (or <code>XDG_CONFIG_HOME</code>) is set.</li>
+    </ul>
+
+    <!-- 2 -->
+    <h2 id="quickstart">2 · Quickstart</h2>
+<pre class="block">sec init                                   # identity + empty vault
+sec set OPENAI_API_KEY                     # masked prompt
+sec import .env                            # or bring a whole .env in
+sec run OPENAI_API_KEY -- python app.py    # as an env var, output scrubbed
+sec exec -- curl -H 'Authorization: Bearer {{GH_TOKEN}}' https://api.github.com/user
+sec ok                                     # anything missing / stale?</pre>
+
+    <h3 id="init">sec init</h3>
+    <p>Create the age identity and an empty vault.</p>
+<pre class="block">sec init [--backend keyring|file] [--import-identity FILE]
+
+  --backend keyring|file      where to keep the key (default: keyring if the OS store answers)
+  --import-identity FILE      adopt an existing age identity instead of generating one
+
+sec init --backend file          # servers, containers, CI</pre>
+
+    <!-- 3 -->
+    <h2 id="concepts">3 · Concepts</h2>
+    <ul>
+      <li id="vault"><b>Vault</b> — <code>~/.config/sec/vault/NAME.age</code> (age X25519,
+        <code>filippo.io/age</code>) plus <code>NAME.json</code> metadata. Ciphertext and names only.
+        Home is <code>~/.config/sec</code> (<code>$XDG_CONFIG_HOME/sec</code> if set); override with <code>SEC_HOME</code> (handy for a throwaway
+        vault in a test).</li>
+      <li><b>Identity</b> — <code>SEC_IDENTITY</code> env &gt; OS keyring &gt; <code>identity.txt</code>
+        (0400). macOS and Windows default to the keyring; Linux, BSD, containers and CI default to the
+        <b>file</b>, because a server has no Secret Service and a desktop one is DBus that can block on an
+        unlock prompt nobody will answer in cron. See <a href="#identity"><code>sec identity</code></a>.</li>
+      <li id="owner"><b>Owner vs agent</b> — a TTY on stdin, or <code>SEC_OWNER=1</code>, is the owner.
+        Agent harnesses run with a piped stdin, so they never are. What needs the owner is in the
+        <a href="#owner-only">owner-only matrix</a>.</li>
+      <li id="redaction"><b>Redaction</b> — <code>exec</code>, <code>run</code> and <code>sh</code> scrub
+        each value plus its base64 (with and without trailing newline), hex, URL-encoded and JSON-escaped
+        forms from stdout and stderr. Matching is <b>newline-tolerant</b> — the stream is also searched with
+        <code>\r</code> and <code>\n</code> removed, so a value wrapped across lines (<code>xxd -p</code>,
+        GNU <code>base64</code>, <code>fold</code>) is still caught. The tail is held back briefly so a
+        match cannot slip through the seam; output can lag a few hundred bytes behind.</li>
+      <li id="ledger"><b>Placement ledger</b> — <code>env write</code>, <code>render</code>,
+        <code>import</code>, <code>gen --env</code>, <code>push</code> and <code>place</code> record where a
+        value went; <code>rotate</code>, <code>set --place</code> and <code>ok</code> replay them.</li>
       <li><b>Audit</b> — <code>~/.config/sec/audit.ndjson</code>: action, names, agent, cwd, template.
         Never values.</li>
     </ul>
 
-    <h2 id="init">sec init</h2>
-    <p>Create the age identity and an empty vault.</p>
-<pre class="block">  --backend keyring|file      where to keep the key (default: keyring if the OS store answers)
-  --import-identity FILE      adopt an existing age identity instead of generating one</pre>
+    <h3 id="project">Projects, environments, scoped names</h3>
+    <p>A name may be scoped — <code>project:NAME</code>, <code>project@env:NAME</code> or
+    <code>@env:NAME</code> (e.g. <code>reqsume@production:POSTGRES_PASSWORD</code>) — anywhere a name
+    goes, including inside <code>{{…}}</code>. Bare names resolve in the current context:
+    <code>project@env</code>, then <code>project</code>, then global. Precedence:
+    <code>--project</code>/<code>--env</code> on any command and explicit scoped names beat
+    <code>SEC_PROJECT</code>/<code>SEC_ENV</code>, which beat <a href="#use-cmd"><code>sec use</code></a>.
+    With <code>sec run</code> a scoped name arrives as its plain <code>NAME</code> env var.</p>
 
-    <h2 id="set">sec set</h2>
+    <!-- 4 -->
+    <h2 id="use">4 · Use — run work with secrets, never seeing them</h2>
+
+    <h3 id="exec">sec exec</h3>
+    <p>Run a command or script with <code>{{NAME}}</code> placeholders filled; output scrubbed. The verb
+    for anything that takes a credential as an <b>argument</b> or inside a <b>body</b>.</p>
+<pre class="block">sec exec -- CMD ARGS with {{NAME}}
+sec exec -f SCRIPT [-- args]
+
+  -f FILE                 script/template to render and execute (args after -- go to it)
+  --allow-output-only     owner-only: permit echo/cat/env style commands
+
+sec exec -- curl -H 'Authorization: Bearer {{GH_TOKEN}}' https://api.github.com/user
+sec exec -- psql postgres://app:{{reqsume@production:POSTGRES_PASSWORD}}@db/app</pre>
+
+    <h3 id="run">sec run</h3>
+    <p>Run a command with secrets injected as environment variables; output scrubbed.</p>
+<pre class="block">sec run NAME[,NAME2][=ENVVAR] -- CMD ARGS
+
+sec run OPENAI_API_KEY -- python app.py
+sec run DB_PW=PGPASSWORD -- psql -h db -U app</pre>
+
+    <h3 id="render">sec render</h3>
+    <p>Fill a template file with secrets → a 0600 output file; the placement is recorded, so
+    <code>rotate</code> re-renders it.</p>
+<pre class="block">sec render TEMPLATE --out FILE
+
+sec render conf.tmpl --out conf.yaml
+✓ rendered conf.tmpl → conf.yaml (0600; 2 secret(s), placement recorded)</pre>
+
+    <h3 id="env">sec env</h3>
+    <p>Dotenv files without reading them.</p>
+<pre class="block">sec env write TARGET NAME[=VAR]…    # add/replace keys, 0600, recorded as a placement
+sec env ls TARGET                   # the keys in a dotenv (names only)
+sec env list
+
+sec env write .env DB_PW=DATABASE_PASSWORD</pre>
+
+    <h3 id="sh">sec sh</h3>
+    <p>A shell for agents: secret-file reads are refused, <code>{{NAME}}</code> is filled, all output
+    redacted. See <a href="#sh-agents">Agents</a>.</p>
+<pre class="block">sec sh -c 'psql "postgres://app:{{DB_PW}}@db/app" -c "select 1"'</pre>
+
+    <h3 id="seal">sec seal</h3>
+    <p>The reverse of render: puts <code>{{NAME}}</code> back where a file holds real values. Commit the
+    sealed file; <code>render</code> puts the values back.</p>
+<pre class="block">sec seal FILE [--out FILE] [--check]
+
+sec seal config.yaml
+sec seal notes.md --check     # only report; exit 1 if a live value is found</pre>
+
+    <h3 id="get">sec get</h3>
+<pre class="block">sec get NAME --out FILE   # raw value to a NEW 0600 file, never stdout (agents ok; existing file/symlink refused)
+sec get NAME --print      # owner-only, and denied at the harness for agents</pre>
+
+    <!-- 5 -->
+    <h2 id="store">5 · Store — put secrets in the vault</h2>
+
+    <h3 id="set">sec set</h3>
     <p>Store a value from stdin — a masked prompt on a TTY, raw stdin from a pipe or heredoc. The value
     never touches argv.</p>
-<pre class="block">  --source URL|note   where this is minted/revoked — used by rotate
+<pre class="block">sec set NAME [--tag a,b] [--source URL] [--raw] [--place]  &lt; value on stdin
+sec set NAME --from FILE|DIR
+
+  --source URL|note   where this is minted/revoked — used by rotate
   --tag a,b           comma-separated tags
   --raw               keep the trailing newline (PEM / JSON material)
   --place             after storing, re-apply to every recorded placement
   --from FILE|DIR     store a whole file or folder instead of a value
 
-printf '%s' "$VALUE" | sec set STRIPE_KEY --source https://dashboard.stripe.com/apikeys</pre>
-    <p>If the value arrived through an agent, sec says so and suggests rotating once the real source can
-    mint a fresh one.</p>
-    <p>On a TTY the prompt echoes <code>*</code> per key. A <b>paste</b> shows only its last 3 characters
-    plus a character count — <code>*********XYZ  (12 chars)</code> — so you can check you pasted the right
-    key; typing another key hides them again. Long values cap at 32 stars.</p>
-    <p><code>--from</code> takes a cert, a key file, or a whole folder. A folder is stored as one encrypted
-    archive of its regular files and directories with their permission bits; symlinks, sockets and devices
-    are skipped and listed. The source path is <b>not</b> recorded as a destination — sec never writes
-    back over your original. Put it somewhere with <a href="#push"><code>sec push</code></a>.</p>
-<pre class="block">sec set TLS --from ./certs
+printf '%s' "$VALUE" | sec set STRIPE_KEY --source https://dashboard.stripe.com/apikeys
+sec set TLS --from ./certs
 ✓ TLS stored (v1, folder of 3 entries, 1824 bytes)</pre>
+    <p>If the value arrived through an agent, sec says so and suggests rotating once the real source can
+    mint a fresh one. On a TTY the prompt echoes <code>*</code> per key; a <b>paste</b> shows only its last
+    3 characters plus a count — <code>*********XYZ  (12 chars)</code> — so you can check the key; typing
+    hides them again. Long values cap at 32 stars.</p>
+    <p><code>--from</code> takes a cert, a key file or a folder. A folder is one encrypted archive of its
+    regular files and directories with permission bits; symlinks, sockets and devices are skipped and
+    listed. The source path is <b>not</b> recorded as a destination — sec never writes back over your
+    original. Put it somewhere with <a href="#push"><code>sec push</code></a>.</p>
 
-    <h2 id="gen">sec gen</h2>
-    <p>Generate a password or token straight into the vault and/or a dotenv file. It is never displayed.</p>
-<pre class="block">  --save NAME      store as this secret
+    <h3 id="gen">sec gen</h3>
+    <p>Generate a password or token straight into the vault and/or a dotenv. Never displayed.</p>
+<pre class="block">sec gen --save NAME [--len 32] [--hex] [--no-symbols] [--env FILE=VAR]
+
+  --save NAME      store as this secret
   --len N          length in chars, or bytes with --hex (default 32)
   --hex            hex token of --len random bytes
   --no-symbols     letters and digits only
@@ -139,113 +274,112 @@ printf '%s' "$VALUE" | sec set STRIPE_KEY --source https://dashboard.stripe.com/
   --tag a,b        tags for --save
   --print          owner-only: print instead
 
-sec gen --save APP_DB_PW --len 32 --env infra/vault/dev/.env.dev=DB_PASSWORD</pre>
+sec gen --save DB_PW --env .env=DB_PASSWORD
+sec gen --save SESSION_KEY --hex --len 32</pre>
 
-    <h2 id="exec">sec exec</h2>
-    <p>Run a command or script with <code>{{NAME}}</code> placeholders filled; output scrubbed. This is
-    the verb for anything that takes a credential as an <b>argument</b> or inside a <b>body</b>.</p>
-<pre class="block">  -f FILE                 script/template to render and execute (args after -- go to it)
-  --allow-output-only     owner-only: permit echo/cat/env style commands
+    <h3 id="file">sec file</h3>
+    <p>Whole files and folders (service-account JSON, cert folders) are secrets too.</p>
+<pre class="block">sec file add PATH [NAME] [--tag a,b]   # NAME defaults from the file name
+sec file get NAME [-o PATH]            # stdout as-is (folder = tar.gz), or write with -o
+sec file ls [--tag T]
 
-sec exec -- curl -H "Authorization: Bearer {{STRIPE_KEY}}" https://api.stripe.com/v1/balance</pre>
+sec file add ~/Downloads/sa.json       # -> SA_JSON
+sec file get TLS_CERTS -o ./certs</pre>
 
-    <h2 id="run">sec run</h2>
-    <p>Run a command with secrets injected as environment variables; output scrubbed.</p>
-<pre class="block">sec run NAME[,NAME2][=ENVVAR] [--] cmd args…        # -- is optional
+    <h3 id="tag">sec tag</h3>
+<pre class="block">sec tag NAME a,b[,c]          # replace the tags
+sec tag NAME c --add          # add tags
 
-sec run APP_DB_PW=DB_PASSWORD -- ./migrate up</pre>
+sec tag SA_JSON reqsume,firebase</pre>
 
-    <h2 id="render">sec render</h2>
-    <p>Fill a template file with secrets → a 0600 output file; the placement is recorded.</p>
-<pre class="block">  --out PATH       output path (0600)
+    <h3 id="import">sec import</h3>
+    <p>Import every <code>KEY=value</code> of a dotenv. The file itself becomes a placement, so a later
+    rotate updates it.</p>
+<pre class="block">sec import FILE|ENV [--project P] [--env E] [--only A,B] [--tag t] [--no-place]
+sec import SEALED_FILE        # from sec export --for
+sec import -                  # sealed export on stdin (what sec sync runs)
 
-sec render conf.tmpl --out conf.yaml
-✓ rendered conf.tmpl → conf.yaml (0600; 2 secret(s), placement recorded)</pre>
+sec import .env.production --project reqsume --env production
+sec import production --only DB_PW,API_KEY
+sec import x.sec</pre>
+    <p>The target is any existing file whatever its name, or an environment name resolved to its dotenv.
+    A sealed export is recognised by its header and opened with this vault's key; one sealed for a
+    different key is refused.</p>
 
-    <h2 id="env">sec env</h2>
-    <p>Write dotenv files without reading them.</p>
-<pre class="block">sec env write FILE NAME[=VAR]…      # add/replace keys, 0600, recorded as a placement
-sec env ls FILE                     # list the keys in a dotenv file (names only)</pre>
+    <h3 id="ls">sec ls · sec rm</h3>
+<pre class="block">sec ls [--project P] [--env E] [--tag T] [--json]   # names, version, placements, last use — never values
+sec rm NAME            # delete a secret and its retired versions; placed copies are NOT removed</pre>
 
-    <h2 id="import">sec import</h2>
-    <p>Import every <code>KEY=value</code> of an existing dotenv into the vault. The file itself becomes
-    a placement, so a later rotate updates it.</p>
-<pre class="block">  --only a,b     comma-separated keys (default all)
-  --tag a,b      tags for every imported secret
-  --no-place     do not record the file as a placement</pre>
-    <p>The target is any existing file, whatever its name (<code>config.txt</code> works), or an
-    environment name (<code>production</code>) resolved to its dotenv. A <b>sealed export</b> from another
-    sec (see <a href="#export"><code>export --for</code></a>) is recognised by its header and opened with
-    this vault's key; a file sealed for a different key is refused.</p>
-<pre class="block">sec import .env.production
-sec import to-hz.sec          # sealed for this vault</pre>
+    <h3 id="use-cmd">sec use · sec project</h3>
+<pre class="block">sec use                          # show the current context and where it comes from
+sec use PROJECT [--env E]        # set it (saved in SEC_HOME/context.json)
+sec use --env E                  # env only
+sec use --unset | --reset        # back to the global namespace
+sec project ls [--json]          # projects, environments, secret counts</pre>
 
-    <h2 id="export">sec export</h2>
-    <p><b>Owner-only.</b> Write chosen secrets to a .env file in plaintext.</p>
-<pre class="block">  --confirm      required: this writes plaintext values
-  --only a,b     comma-separated names (default all)
-  --out PATH     output .env path (0600)
-  --for KEY      seal for another sec instead (its sec id, or a saved target name) —
-                 no --confirm needed, the file is encrypted</pre>
-    <p>With <code>--for</code> the output is an age-armored file only that vault can open — safe to copy
-    over any channel. The other machine runs <code>sec import FILE</code>. It is a one-off copy: after a
-    rotate, export again. If you can reach it over ssh, docker or k8s,
-    <a href="#sync"><code>sec sync NAME WHERE</code></a> does it in one step.</p>
-<pre class="block">ssh hetzner sec id                                  # → age1…
-sec export --only DB_PW,TLS --for age1… --out to-hz.sec</pre>
+    <!-- 6 -->
+    <h2 id="move">6 · Move — between machines</h2>
 
-    <h2 id="place">sec place</h2>
-    <p>Record where a secret lives — and push the value there now.</p>
-<pre class="block">  --file PATH[=VAR]                          dotenv placement
-  --gh owner/repo[:environment][=SECRET]     GitHub Actions secret
-  --gcp project[=SECRET_NAME]                GCP Secret Manager
-  --render TEMPLATE=OUT                      rendered file
-  --path PATH[:MODE]                         write the value / file / folder whole at PATH
-  --record-only                              record without pushing the value now
+    <h3 id="move-table">Which verb? (<code>sec help move</code>)</h3>
+    <table class="docs-table">
+      <thead><tr><th>Situation</th><th>Verb</th><th>Example</th></tr></thead>
+      <tbody>
+        <tr><td>You can reach it (ssh / docker / k8s) and it runs sec</td><td><a href="#sync"><code>sec sync</code></a></td><td><code>sec sync DB_PW,API_KEY ssh://deploy@db</code></td></tr>
+        <tr><td>A program there reads a file / .env / folder, not a vault</td><td><a href="#push"><code>sec push</code></a></td><td><code>sec push TLS ssh://web/etc/app/certs</code></td></tr>
+        <tr><td>No connection at all (air gap, email, USB)</td><td><a href="#export"><code>sec export --for</code></a> + <a href="#import"><code>sec import</code></a></td><td><code>sec export --only DB_PW --for age1… --out x.sec</code></td></tr>
+        <tr><td>Put sec itself there, or bring it to this version (no secrets move)</td><td><a href="#remote"><code>sec remote</code></a></td><td><code>sec remote upgrade ssh://db</code></td></tr>
+        <tr><td>A plaintext .env for a tool that needs one</td><td><code>sec export --confirm</code> (owner)</td><td><code>sec export --only DB_PW --out prod.env --confirm</code></td></tr>
+      </tbody>
+    </table>
+    <p>Agents may sync to a pinned/saved target, push to recorded places and import. The owner does
+    first-contact sync, <code>--install</code>, <code>--repin</code>, the first push elsewhere,
+    <code>export</code>, and <code>remote install/upgrade/uninstall</code>; <code>--purge</code> only at a
+    real terminal.</p>
 
-sec place APP_DB_PW --gh muthuishere/app:production --gcp my-project</pre>
-
-    <h2 id="sync">sec sync</h2>
-    <p>Move secrets into (or out of) another sec in one step — over ssh, docker/podman or k8s. The
-    remote key is fetched, the values are sealed for it in memory and streamed into
-    <code>sec import -</code> there: no temp file on either side, only names and versions printed.</p>
-<pre class="block">sec sync NAME[,NAME] WHERE [--dry] [--install] [--repin] [--remote-sec P]
+    <h3 id="sync">sec sync</h3>
+    <p>Move secrets into (or out of) another sec in one step. The remote key is fetched, values are
+    sealed for it in memory and streamed into <code>sec import -</code> there: no temp file on either
+    side, only names and versions printed.</p>
+<pre class="block">sec sync NAME[,NAME] WHERE [--dry] [--install] [--repin] [--remote-sec PATH]
 sec sync NAME[,NAME] --from WHERE [--dry]
 
-WHERE
-  ssh://[user@]host[:port]             ssh host CMD
-  docker://ctr   podman://ctr          docker exec -i ctr CMD
-  k8s://pod  k8s://ns/pod[/container]  k8s://context/ns/pod/[container]
-  ssh://web+docker://api               hops chain with +: ssh in, then into a container
-  ssh://bastion+ssh://db+k8s://ns/pod  through a jump host, into a pod
-  hz                                   a saved <a href="#target">target</a>
+sec sync DB_PW,API_KEY ssh://deploy@db.example.com
+sec sync DB_PW docker://api --install       # no sec there yet: streams it (no admin, any OS)
+sec sync DB_PW k8s://prod/api-7d9f/app
+sec sync DB_PW --from ssh://db --dry        # names + remote key fingerprint, sends nothing</pre>
 
-sec sync DB_PW,API_KEY ssh://deploy@hetzner
-sec sync DB_PW docker://api --install       # sec missing there: stream it in (no root)
-sec sync DB_PW --from ssh://hetzner
-sec sync DB_PW hz --dry                     # names + remote key fingerprint, sends nothing</pre>
+    <h3 id="routes">Routes and <code>+</code> chains</h3>
+<pre class="block">ssh://[user@]host[:port]               ssh host CMD
+docker://ctr    podman://ctr           docker exec -i ctr CMD
+k8s://pod  k8s://ns/pod[/container]    k8s://context/ns/pod/[container]
+ssh://web+docker://api                 ssh in, then into a container (+podman://, +k8s://)
+ssh://bastion+ssh://db                 through a jump host
+ssh://bastion+ssh://db+k8s://ns/pod    through a jump host, into a pod
+db                                     a saved <a href="#target">target</a></pre>
     <ul>
-      <li>The remote key is <b>pinned per target</b> on first contact. An agent may sync only to a
-        pinned key or one the owner saved with <code>sec target add NAME age1…</code>; first contact,
-        <code>--install</code> and <code>--repin</code> are owner-only. A pinned target whose key
-        changed is refused.</li>
-      <li><code>--install</code> detects the far end (<code>uname -sm</code>, or PowerShell on Windows), streams
-        a matching sec (checksum-verified) into that user's own folder — <code>~/.local/bin</code> or
-        <code>%LOCALAPPDATA%\Programs\sec</code> — never root or Administrator, and runs <code>sec init</code>.</li>
-      <li>Both sides write the audit log. Not covered by the Claude deny rules — it never shows a value.</li>
+      <li>The remote key is <b>pinned per target</b> on first contact. An agent may sync only to a pinned
+        key or one the owner saved with <code>sec target add NAME age1…</code>; first contact,
+        <code>--install</code> and <code>--repin</code> are owner-only. A pinned target whose key changed
+        is refused.</li>
+      <li><code>--install</code> detects the far end (<code>uname -sm</code>, or PowerShell on Windows),
+        streams a matching, checksum-verified sec into that user's own folder — <code>~/.local/bin</code> or
+        <code>%LOCALAPPDATA%\Programs\sec</code> — never root, and runs <code>sec init</code>.</li>
+      <li>Both sides write the audit log.</li>
     </ul>
 
-    <h2 id="push">sec push</h2>
+    <h3 id="push">sec push</h3>
     <p>Put secrets where a program already reads them, and <b>remember it</b> — so <code>rotate</code>,
     <code>set --place</code> and <a href="#ok"><code>ok</code></a> keep that copy current. Programs never
     call sec.</p>
 <pre class="block">sec push NAME[,NAME] WHERE [--as NEW] [--mode 0600] [--once]
+sec push NAME -- CMD-ON-THE-OTHER-END [--path P]
 
 WHERE
   ./app/.env                     KEY=value line(s) in a dotenv; other lines untouched
   ./certs   /srv/vol/tls.key     the value / file / folder, written whole
   ssh://[user@]host[:port]/path  a file / folder on a server — needs only sh + tar there
-  ssh://host                     into that server's own sec vault (sec set --raw over stdin)
+  ssh://host                     into that server's own sec vault
+  ssh://web+docker://api/path    same + chains as sync; the path is on the last hop
   docker://ctr/path              inside a running container   (also podman://)
   k8s://pod/path                 inside a pod, via kubectl exec
   prod                           a saved <a href="#target">target</a>
@@ -256,204 +390,246 @@ WHERE
   --remote-sec P    sec binary on the other end (non-login ssh may need ~/.local/bin/sec)
 
 sec push DB_PW,API_KEY ./app/.env
-sec push TLS /srv/myapp/certs                 # then: docker run -v /srv/myapp/certs:/certs:ro …
 sec push TLS ssh://deploy@hetzner/etc/myapp/certs
-sec push DB_PW ssh://hetzner                  # hetzner's own sec now holds it
-sec push TLS docker://myapp/run/certs
-
-sec push NAME -- &lt;any command that runs on the other end&gt;    # escape hatch
-sec push TLS --path /etc/x -- kubectl exec -i pod/api --</pre>
+sec push DB_PW docker://api/run/secrets/db_pw
+sec push TLS --path /etc/x -- kubectl exec -i pod/api --     # escape hatch</pre>
     <ul>
       <li>The value travels on <b>stdin</b> — never argv, never a temp file on either side.</li>
       <li>Files are written to a temp name and renamed; a folder is unpacked beside the old one and
-        swapped in, so a reader never sees half a write and removed files disappear from the copy.</li>
-      <li>Sending to <b>another machine</b> is <b>owner-only</b>: an agent cannot choose a new destination.
-        Re-pushes to destinations the owner already set up happen on rotate, whoever runs it.</li>
-      <li>A path takes one file/folder secret; several values go into a <code>.env</code> path. Editing
-        one line of a <code>.env</code> on a <i>remote</i> machine is not supported — push the whole file.</li>
-      <li>Every push is a <code>place.apply</code> line in the <a href="#logs">log</a>: version, destination,
-        ok or the error.</li>
+        swapped in, so a reader never sees half a write.</li>
+      <li>A first push to another machine is <b>owner-only</b>; re-pushes to recorded places (rotate,
+        <code>set --place</code>, <code>ok</code>) are not.</li>
+      <li>A path takes one file/folder secret; several values go into a <code>.env</code> path. Editing one
+        line of a <i>remote</i> <code>.env</code> is not supported — push the whole file.</li>
+      <li>Every push is a <code>place.apply</code> line in the <a href="#logs">log</a>.</li>
     </ul>
 
-    <h2 id="target">sec target</h2>
-    <p>Save a destination once, use its name in <code>push</code> (or a sec key in
-    <code>export --for</code>).</p>
-<pre class="block">sec target add prod ssh://deploy@hetzner/etc/myapp/certs
-sec target add hz age1…            # another sec's public key
+    <h3 id="target">sec target</h3>
+    <p>Save a destination once; use its name in <code>push</code>/<code>sync</code>, or a sec key in
+    <code>export --for</code>.</p>
+<pre class="block">sec target add NAME URL|age1…
 sec target ls
-sec target rm prod</pre>
+sec target rm NAME
 
-    <h2 id="rotate">sec rotate</h2>
-    <p>New value → re-pushed to every recorded placement → the steps it cannot do are printed rather
-    than assumed.</p>
-<pre class="block">  --gen            generate the new value here (passwords you own, e.g. DB users)
-  --len N          length for --gen (default 32)
-  --no-symbols     for --gen
-  --hook SCRIPT    run with SEC_NAME / SEC_NEW_VALUE / SEC_OLD_VALUE in the environment,
-                   to apply the change at the source
-  --undo           bring back the previous version and re-place it
-  --purge          drop retired ciphertexts, after you revoked them upstream
+sec target add db ssh://deploy@db
+sec target add db-key age1…      # pins that key: agents may now sync</pre>
 
-sec rotate APP_DB_PW --gen --hook hooks/postgres-rotate.sh</pre>
-    <p>The old version stays listed as "still to revoke upstream" until <code>--purge</code>. That is
-    deliberate: sec will not mark a revocation done that it did not witness.</p>
+    <h3 id="remote">sec remote</h3>
+    <p>Put sec on another machine, container or pod (any sync route), or bring it to this version. No
+    secrets move; never root, sudo or Administrator. Owner-only except <code>status</code>.</p>
+<pre class="block">sec remote status WHERE                      # its version vs this one, vault y/n
+sec remote install WHERE [--dry]
+sec remote upgrade WHERE [--dry]             # keeps sec.prev; rolls back on failure or name-count change
+sec remote uninstall WHERE [--dry]           # keeps its vault
+sec remote uninstall WHERE --purge [--force] # owner at a real terminal; --force for secrets only there</pre>
+    <p><code>sec remote install|upgrade</code> and <code>sec sync --install</code> also install the agent
+    skill on the far end (<code>--no-skill</code> skips it).</p>
 
-    <h2 id="where">sec where</h2>
-    <p>Every placement plus recent uses of a secret — the compromise-day question, in one command.</p>
-<pre class="block">sec where APP_DB_PW</pre>
+    <h3 id="export">sec export · import</h3>
+    <p><b>Owner-only</b> (and denied to Claude by <code>Bash(sec export:*)</code>). Names go in
+    <code>--only</code>, never as positionals.</p>
+<pre class="block">sec export --out FILE --for KEY|TARGET [--only A,B]   # sealed: only that vault can open it
+sec export --out FILE --confirm [--only A,B]          # PLAINTEXT .env (0600)
 
-    <h2 id="audit">sec audit</h2>
-    <p>Who used what, when. Never values.</p>
-<pre class="block">  --name NAME      filter by secret
-  --action A       filter by action (exec, run, set, rotate, …)
-  --since 7d       window like 24h, 7d, 30d
-  --retired        secrets with retired versions still to revoke upstream</pre>
+there:  sec id                                        # → age1…
+here:   sec export --only DB_PW,TLS --for age1… --out x.sec
+there:  sec import x.sec</pre>
+    <p>A sealed export is a one-off copy: after a rotate, export again. If you can reach the machine,
+    <a href="#sync"><code>sec sync</code></a> does it in one step.</p>
 
-    <h2 id="ls">sec ls · sec rm · sec get</h2>
-<pre class="block">sec ls [--tag t] [--json]    # names, version, placement count, last use, source — never values
-sec rm NAME                  # delete a secret and its retired versions
-sec get NAME --print         # owner-only, and denied at the harness for agents</pre>
+    <h3 id="id">sec id</h3>
+    <p>Print this vault's public key (<code>age1…</code>) — what a sender passes to
+    <code>sec export --for</code> or <code>sec target add NAME &lt;key&gt;</code>.</p>
 
-    <h2 id="keys">sec keys</h2>
+    <h3 id="recipients">sec recipients</h3>
+    <p>List or add age public keys that can decrypt the <b>whole</b> vault. To send only some secrets,
+    use sync.</p>
+<pre class="block">sec recipients
+sec recipients --add age1…       # re-encrypts every secret</pre>
+
+    <!-- 7 -->
+    <h2 id="audit-rotate">7 · Audit &amp; rotate</h2>
+
+    <h3 id="where">sec where</h3>
+    <p>Every placement plus recent uses of a secret — the compromise-day question.</p>
+<pre class="block">sec where DB_PW</pre>
+
+    <h3 id="logs">sec logs</h3>
+    <p>The audit log, newest last, every field shown; failures marked <code>✗</code>.</p>
+<pre class="block">sec logs [NAME] [--since 7d] [--action A] [-n 50] [--json]
+
+sec logs DB_PW --since 7d
+sec logs --action sync.push</pre>
+
+    <h3 id="audit">sec audit</h3>
+<pre class="block">sec audit [--name N] [--action A] [--since 7d] [--retired]
+sec audit --retired     # old versions still to revoke upstream</pre>
+
+    <h3 id="keys">sec keys</h3>
     <p>Which keys a project needs are in the vault, and which are missing. With no arguments it reads
     <code>.env.example</code> / <code>.env.sample</code> / <code>.env.template</code> / <code>*.tmpl</code>
-    in the current directory; or name any files. <code>{{NAME}}</code> placeholders count, otherwise dotenv
-    keys. Values are never read out. Exits 1 if anything is missing.</p>
-<pre class="block">sec keys
+    in the current directory. <code>{{NAME}}</code> placeholders count, otherwise dotenv keys. Exits 1 if
+    anything is missing.</p>
+<pre class="block">sec keys [FILE…]
 .env.example  (3 keys)
   ✓ DB_PW
   ✓ API_KEY
   ✗ STRIPE_KEY   missing — sec set STRIPE_KEY</pre>
 
-    <h2 id="logs">sec logs</h2>
-    <p>The audit log, newest last, every field shown; failures marked <code>✗</code>.
-    (<code>sec audit</code> still works as before.)</p>
-<pre class="block">sec logs [NAME]
-  --since 7d       window like 24h, 7d, 30d
-  --action A       set, push, place.apply, rotate, run, exec, …
-  -n 50            last N entries (0 = all)
-  --json           one JSON object per line</pre>
-
-    <h2 id="ok">sec ok</h2>
-    <p>The one command to run when unsure. It fixes what is provably safe and lists the rest, each with
-    the command to run.</p>
-<pre class="block">sec ok           # check and fix
-sec ok --dry     # change nothing
-sec ok -v        # also list every placement it skipped
+    <h3 id="ok">sec ok</h3>
+    <p>The one command to run when unsure. Fixes what is provably safe and lists the rest with the
+    command to run.</p>
+<pre class="block">sec ok [--dry] [-v]
 
 ✓ vault unlocked, 14 secret(s), key in keyring
 ✗ STRIPE_KEY missing (needed by .env.example)   → sec set STRIPE_KEY
 ↻ DB_PW → file   /srv/myapp/.env  (DB_PW): has v2, vault has v3 → re-pushed ✓
-✓ 9 placement(s) hold the current version
 ⚠ API_KEY v1 replaced 12 days ago — revoke it at its source, then   → sec rotate API_KEY --purge</pre>
     <ul>
-      <li><b>Fixes:</b> a copy that exists and the log shows holds an older version — re-pushed.</li>
-      <li><b>Never touches:</b> a destination with no version on record (it will not push to GitHub, GCP
-        or a server on a guess), a file that was deleted (maybe on purpose), and placements recorded with a
-        relative path by an older sec (no telling what they were relative to).</li>
-      <li><b>Reports:</b> keys the project needs that the vault lacks; replaced versions older than 7 days
-        still to revoke; whether the agent hook is installed. Exit 1 when something needs you.</li>
+      <li><b>Fixes:</b> a copy the log shows holds an older version — re-pushed.</li>
+      <li><b>Never touches:</b> a destination with no version on record, a file that was deleted, and
+        relative-path placements recorded by an older sec.</li>
+      <li><b>Reports:</b> missing keys, replaced versions older than 7 days still to revoke, whether the
+        agent hook is installed. Exit 1 when something needs you.</li>
     </ul>
 
-    <h2 id="id">sec id</h2>
-    <p>Print this vault's public key (<code>age1…</code>) — what someone passes to
-    <code>sec export --for</code> to send you secrets.</p>
+    <h3 id="place">sec place</h3>
+    <p>Record where a secret lives — and push the value there now.</p>
+<pre class="block">  --file PATH[=VAR]                          dotenv placement
+  --gh owner/repo[:environment][=SECRET]     GitHub Actions secret
+  --gcp project[=SECRET_NAME]                GCP Secret Manager
+  --render TEMPLATE=OUT                      rendered file
+  --path PATH[:MODE]                         write the value / file / folder whole at PATH
+  --record-only                              record without pushing now
 
-    <h2 id="identity">sec identity</h2>
-<pre class="block">sec identity                              # which backend holds the key
-sec identity move --to keyring|file       # switch; verifies the new location reads back
-                                          # BEFORE removing the old copy
-sec identity export --out FILE --confirm  # a backup for your password manager
-sec identity import FILE</pre>
-    <p>What the keyring buys you: no plaintext key on disk, so a disk image, a Time Machine backup or an
-    <code>rclone</code> of the wrong directory doesn't carry it. What it does <b>not</b> buy you: it
-    cannot stop a process running as you from asking the keyring. That exposure is identical to a 0600
-    file.</p>
+sec place GH_TOKEN --gh muthu/app:prod
+sec place DB_PW --render db.tmpl=db.conf</pre>
 
-    <h2 id="recipients">sec recipients</h2>
-    <p>List or add age public keys that can decrypt the vault — how a teammate or a second machine gets
-    in.</p>
-<pre class="block">sec recipients
-sec recipients --add age1…       # re-encrypts every secret</pre>
+    <h3 id="rotate">sec rotate</h3>
+    <p>New value → re-pushed to every recorded placement → the steps it cannot do are printed.</p>
+<pre class="block">sec rotate NAME [--gen | &lt; new value] [--hook SCRIPT]
+sec rotate NAME --undo | --purge
 
-    <h2 id="cert">sec cert</h2>
-    <p>Local TLS, with private keys written 0600 — because a dev certificate is a credential, and it
-    usually ends up world-readable in <code>/tmp</code>.</p>
-<pre class="block">sec cert ca                      # a local CA
-sec cert issue --cn HOST         # issue from that CA
-sec cert self-signed --cn HOST</pre>
+  --gen            generate the new value here (passwords you own, e.g. DB users)
+  --len N          length for --gen (default 32)
+  --no-symbols     for --gen
+  --hook SCRIPT    run with SEC_NAME / SEC_NEW_VALUE / SEC_OLD_VALUE set, to apply it at the source
+  --undo           bring back the previous version and re-place it
+  --purge          drop retired ciphertexts, after you revoked them upstream
 
-    <h2 id="skill">sec skill install</h2>
-    <p>Writes the skill built into the sec binary to <code>~/.claude/skills/sec</code>,
-    <code>~/.agents/skills/sec</code> and <code>$CLAUDE_CONFIG_DIR/skills/sec</code> (no checkout
-    needed; <code>--from DIR</code> links a checkout instead), and merges these into each Claude
-    <code>settings.json</code> <code>permissions.deny</code>. <code>sec remote install|upgrade</code> and
-    <code>sec sync --install</code> install it on the far end too (<code>--no-skill</code> skips it):</p>
+sec rotate DB_PW --gen --hook ./alter-user.sh</pre>
+    <p>The old version stays listed as "still to revoke upstream" until <code>--purge</code>: sec will not
+    mark a revocation done that it did not witness.</p>
+
+    <!-- 8 -->
+    <h2 id="agents">8 · Agents</h2>
+
+    <h3 id="skill">The skill · sec skill install</h3>
+    <p>The skill is built into the binary: <code>SKILL.md</code> is the index (the one rule:
+    write <code>{{NAME}}</code>, hand it to sec), with detail in <code>references/</code> —
+    <code>commands.md</code>, <code>moving.md</code>, <code>permissions.md</code>,
+    <code>projects-and-envs.md</code>, <code>identity-and-agent.md</code>, <code>scenarios.md</code>.</p>
+<pre class="block">sec skill install [--no-settings]          # write the built-in skill + deny rules
+sec skill install --from ./skills/sec      # symlink a checkout instead (development)</pre>
+    <ul>
+      <li>Written to <code>~/.claude/skills/sec</code>, <code>~/.agents/skills/sec</code> and
+        <code>$CLAUDE_CONFIG_DIR/skills/sec</code> when that is set.</li>
+      <li><b>Auto-install:</b> the first sec run on a machine installs it (see <a href="#install-binary">bare
+        binary</a>). <b>Auto-refresh:</b> every run rewrites a sec-written copy that is out of date.</li>
+      <li><code>--no-settings</code> skips the deny rules.</li>
+    </ul>
+
+    <h3 id="deny">Harness deny rules</h3>
+    <p>Merged into each Claude <code>settings.json</code> <code>permissions.deny</code>, so the harness
+    refuses — not the model:</p>
 <pre class="block">Read(~/.config/sec/**)     # the vault and the identity
-Read(**/.env*)             # the files sec writes for you
+Read(**/.env)              # the files sec writes for you
+Read(**/.env.*)
 Bash(sec get:*)            # the print path
 Bash(sec export:*)         # the bulk print path</pre>
-    <p>So the harness refuses, not the model.</p>
 
-    <h2 id="project">sec use · sec project</h2>
-    <p>Secrets can belong to a project and an environment. Address them as <code>reqsume:NAME</code>,
-    <code>reqsume@production:NAME</code> or <code>@dev:NAME</code> anywhere a name goes. Bare names resolve
-    in the current context: project@env, then project, then global.</p>
-<pre class="block">sec use reqsume --env production     # saved in context.json; SEC_PROJECT/SEC_ENV override
-sec use                              # show the current context
-sec use --unset                      # back to the global namespace
-sec import .env.production --project reqsume --env production
-sec ls --project reqsume --env production
-sec project ls                       # projects, environments, counts</pre>
+    <h3 id="agent">sec agent</h3>
+    <p>Run an agent with the human's keyboard going through sec first: every paste and Enter is checked
+    for secrets; one found is stored in the vault and the agent gets <code>{{NAME}}</code>. The agent's
+    shell becomes <code>sec sh</code>, and for <code>claude</code> the <a href="#hook">hook</a> is wired in
+    for the session. Arguments after the agent name pass through untouched. Without a working vault it
+    will not start.</p>
+<pre class="block">sec agent AGENT [agent args…]
 
-    <h2 id="file">sec file · sec tag</h2>
-    <p>Whole files and folders (service-account JSON, cert folders) are secrets too. Tags group them.</p>
-<pre class="block">sec file add ~/Downloads/sa.json           # -> SA_JSON
-sec file add ./certs TLS_CERTS --tag reqsume
-sec file get TLS_CERTS -o ./certs          # stdout as-is without -o (folder = tar.gz)
-sec file ls [--tag T]
-sec tag SA_JSON reqsume,firebase           # replace tags; --add to append</pre>
+sec agent claude
+sec agent codex</pre>
 
-    <h2 id="remote">sec remote</h2>
-    <p>Put sec on another machine, container or pod (any <code>sync</code> route), or bring it to this
-    version. No secrets move; never root, sudo or Administrator. Owner only, except <code>status</code>.</p>
-<pre class="block">sec remote status ssh://db
-sec remote install ssh://web+docker://api [--dry]
-sec remote upgrade ssh://db                 # same sha256 = no-op; keeps sec.prev; rolls back on failure
-sec remote uninstall ssh://db               # keeps the vault
-sec remote uninstall ssh://db --purge       # owner at a real terminal only</pre>
+    <h3 id="hook">sec hook</h3>
+    <p>Pre-tool guard: an agent's file reads, writes and searches (Bash, Read, Write, Edit, Grep, Glob,
+    notebooks) go past sec first; a denied call is audited as <code>hook.deny</code>.
+    <a href="#agent"><code>sec agent claude</code></a> wires it in for that session; <code>sec skill install</code> does not.</p>
+<pre class="block">sec hook --client claude</pre>
 
-    <h2 id="seal">sec seal</h2>
-    <p>The reverse of render: puts <code>{{NAME}}</code> back where a file holds real values.</p>
-<pre class="block">sec seal config.yaml
-sec seal notes.md --check     # exit 1 if a live value is found</pre>
+    <h3 id="sh-agents">sec sh</h3>
+    <p>The agent's shell: refuses reads of secret files, fills <code>{{NAME}}</code>, redacts all output.
+    <code>sec agent</code> sets it as <code>SHELL</code> / <code>CLAUDE_CODE_SHELL</code>.</p>
+<pre class="block">sec sh [shell args]</pre>
 
-    <h2 id="agent">sec agent · sec sh · sec hook</h2>
-<pre class="block">sec agent claude      # every paste and Enter is checked for secrets before the agent sees it
-sec sh -c '...'       # a shell for agents: secret-file reads refused, {{NAME}} filled, output redacted
-sec hook --client claude   # pre-tool guard, wired by sec skill install</pre>
-
-    <h2 id="readonly">Read-only vaults (CI, e2e tests)</h2>
+    <!-- 9 -->
+    <h2 id="readonly">9 · CI / read-only vaults</h2>
     <p>With <code>SEC_READONLY=1</code> a vault can be used but never changed: only <code>ls run exec
-    render seal keys where logs audit env id use project</code> run; every write is refused, including
-    through the Go package.</p>
+    render seal keys where logs audit env id use project</code> run; every other command is refused,
+    including writes through the Go package, and the skill auto-install/refresh is skipped. Use
+    <code>sec init --backend file</code> on a CI runner.</p>
 <pre class="block">SEC_READONLY=1 sec run DB_URL,API_TOKEN -- npm run e2e</pre>
 
-    <h2 id="go">Go package</h2>
-    <p><code>github.com/muthuishere/sec/pkg/vault</code> opens the same vault from a Go program.
-    No export path; every read is audited with the caller's label.</p>
+    <!-- 10 -->
+    <h2 id="go">10 · Go package — pkg/vault</h2>
+    <p><code>github.com/muthuishere/sec/pkg/vault</code> opens the same vault from a Go program. No export
+    path; every read is audited with the caller's label.</p>
 <pre class="block">v, _ := vault.OpenAs("myapp")
 token, _ := v.Get("API_TOKEN")      // pass straight to a client, never print
 names, _ := v.List()
 clean := vault.Redact(out, map[string]string{"API_TOKEN": token})</pre>
 
-    <div class="note warnbox" style="margin-top:44px">
-      <b>Threat model.</b> sec defends against sloppiness and logs — secrets in transcripts, guides,
-      commits, test output, chat. It does <b>not</b> defend against a hostile agent with network access:
-      it could <code>curl</code> a value to a webhook through <code>exec</code>, and so could every other
-      tool in this category. The refusal of output-only commands and the audit line for every use make
-      the silly attempt <b>visible</b>, not impossible.
+    <!-- 11 -->
+    <h2 id="owner-only">11 · Owner-only matrix</h2>
+    <p>Owner = a TTY on stdin, or <code>SEC_OWNER=1</code>. Agents get everything else.</p>
+    <table class="docs-table">
+      <thead><tr><th>Command</th><th>Owner-only part</th><th>Open to agents</th></tr></thead>
+      <tbody>
+        <tr><td><code>get</code></td><td><code>--print</code></td><td><code>--out FILE</code> (new 0600 file)</td></tr>
+        <tr><td><code>gen</code></td><td><code>--print</code></td><td><code>--save</code>, <code>--env</code></td></tr>
+        <tr><td><code>exec</code></td><td><code>--allow-output-only</code></td><td>everything else</td></tr>
+        <tr><td><code>export</code></td><td>all of it</td><td>—</td></tr>
+        <tr><td><code>sync</code></td><td>first contact, <code>--install</code>, <code>--repin</code></td><td>to a pinned/saved target; <code>--from</code></td></tr>
+        <tr><td><code>push</code></td><td>first push to another machine</td><td>re-pushes to recorded places</td></tr>
+        <tr><td><code>remote</code></td><td><code>install</code>, <code>upgrade</code>, <code>uninstall</code>; <code>--purge</code> at a real terminal only (<code>SEC_OWNER=1</code> not enough)</td><td><code>status</code></td></tr>
+        <tr><td><code>identity</code></td><td><code>move</code>, <code>export</code>, <code>import</code>, <code>adopt</code></td><td>show</td></tr>
+      </tbody>
+    </table>
+
+    <!-- 12 -->
+    <h2 id="threat">12 · Threat model</h2>
+    <div class="note warnbox">
+      sec defends against sloppiness and logs — secrets in transcripts, guides, commits, test output,
+      chat. It does <b>not</b> defend against a hostile agent with network access: it could
+      <code>curl</code> a value to a webhook through <code>exec</code>, and so could every other tool in
+      this category. The refusal of output-only commands and the audit line for every use make the silly
+      attempt <b>visible</b>, not impossible.
     </div>
+
+    <h3 id="identity">sec identity</h3>
+<pre class="block">sec identity [show [--json]]               # which backend holds the key
+sec identity move --to keyring|file        # verifies the new location reads back BEFORE removing the old
+sec identity export --out FILE --confirm   # a backup for your password manager
+sec identity import FILE [--backend keyring|file]
+sec identity adopt KEY_FILE</pre>
+    <p>What the keyring buys you: no plaintext key on disk, so a disk image, a backup or an
+    <code>rclone</code> of the wrong directory doesn't carry it. What it does <b>not</b> buy you: it cannot
+    stop a process running as you from asking the keyring — identical exposure to a 0600 file.</p>
+
+    <h3 id="cert">sec cert</h3>
+    <p>Local TLS with private keys written 0600 — a dev certificate is a credential, and it usually ends
+    up world-readable in <code>/tmp</code>.</p>
+<pre class="block">sec cert ca [--trust]
+sec cert issue --cn HOST [--san a,b] [--out DIR]
+sec cert self-signed --cn HOST</pre>
 
   </div>
 </section>

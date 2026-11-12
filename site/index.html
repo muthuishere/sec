@@ -19,18 +19,16 @@
   <div class="wrap">
     <a class="logo" href="./"><em>sec</em> —&nbsp;credentials broker</a>
     <ul>
-      <li><a href="#demo">Demo</a></li>
-      <li><a href="#how">How</a></li>
-      <li><a href="#rotate">Rotate</a></li>
-      <li><a href="#push">Push</a></li>
-      <li><a href="compare.html">Compare</a></li>
+      <li><a href="./" aria-current="page">Home</a></li>
       <li><a href="docs.html">Docs</a></li>
+      <li><a href="recipes.html">Recipes</a></li>
+      <li><a href="compare.html">Compare</a></li>
       <li><a href="https://github.com/muthuishere/sec">GitHub</a></li>
     </ul>
   </div>
 </nav>
 
-<header class="hero">
+<header class="hero" id="install">
   <div class="wrap">
     <div class="kicker">one static Go binary · no daemon · no SaaS</div>
     <h1>Your agent uses the key.<br><span class="ghost">It never sees the key.</span></h1>
@@ -38,15 +36,67 @@
     value they touch lands in a transcript, a prompt cache, a log, a commit. <b>sec</b> hands the agent
     a placeholder instead. It fills <code>{{NAME}}</code> at the moment of execution, in a child process,
     and scrubs the value back out of everything that comes home.</p>
+
+    <div class="install">
+      <div class="itabs" role="tablist">
+        <button class="itab on" role="tab" aria-selected="true" data-os="unix">macOS / Linux</button>
+        <button class="itab" role="tab" aria-selected="false" data-os="win">Windows (cmd)</button>
+      </div>
+      <div class="term ipanel" data-os="unix">
+<pre><span class="p">$</span> <span class="c">curl -fsSL https://raw.githubusercontent.com/muthuishere/sec/main/install.sh | sh</span></pre>
+        <button class="copy" type="button">copy</button>
+      </div>
+      <div class="term ipanel" data-os="win" hidden>
+<pre><span class="p">&gt;</span> <span class="c">curl.exe -fsSL https://raw.githubusercontent.com/muthuishere/sec/main/install.cmd -o "%TEMP%\sec-install.cmd" &amp;&amp; "%TEMP%\sec-install.cmd"</span></pre>
+        <button class="copy" type="button">copy</button>
+      </div>
+      <p class="inote">Puts <code>sec</code> on your PATH and installs the agent skill into
+      <code>~/.claude/skills</code> and <code>~/.agents/skills</code>. Downloaded a bare binary instead?
+      It installs the skill on its first run, and any later run keeps it current. Re-run the line to upgrade.
+      Building <a href="docs.html#install">from source</a> works too.</p>
+    </div>
+
     <div class="cta">
-      <a class="btn btn-primary" href="docs.html#install">Install</a>
+      <a class="btn btn-primary" href="#quickstart">60-second quickstart</a>
       <a class="btn btn-ghost" href="#demo">Watch the 4-minute demo</a>
     </div>
   </div>
 </header>
 
+<!-- QUICKSTART -->
+<section id="quickstart">
+  <div class="wrap">
+    <div class="sec-kicker">60 seconds</div>
+    <h2 class="sec">Init, store, use. Then hand it to your agent.</h2>
+    <div class="term">
+      <div class="bar"><i></i><i></i><i></i><span>first run</span></div>
+<pre><span class="cm"># 1. create the age identity + an empty vault (key goes in the OS keyring;</span>
+<span class="cm">#    on servers/CI: sec init --backend file)</span>
+<span class="p">$</span> <span class="c">sec init</span>
+
+<span class="cm"># 2. store a value — masked prompt, never argv, never shell history</span>
+<span class="p">$</span> <span class="c">sec set GH_TOKEN</span>
+
+<span class="cm"># 3. use it by name; sec fills {{GH_TOKEN}} in a child process</span>
+<span class="p">$</span> <span class="c">sec exec -- sh -c 'curl -sS -H "Authorization: Bearer {{GH_TOKEN}}" https://api.github.com/user | head -3; echo "sent {{GH_TOKEN}}"'</span>
+{
+  "login": "you",
+  "id": 1234567,
+sent <span class="red">[REDACTED:GH_TOKEN]</span>
+
+<span class="cm"># already have a .env? bring every KEY=value in at once</span>
+<span class="p">$</span> <span class="c">sec import .env</span>
+</pre>
+    </div>
+    <p class="cap"><b>Now ask your agent.</b> "List my GitHub repos." "Run the integration tests against
+    staging." The installed skill teaches it to write <code>{{NAME}}</code> and call <code>sec</code>;
+    it finds names with <code>sec ls --json</code> and never gets a value back. If a key is missing,
+    <code>sec keys .env.example</code> says which.</p>
+  </div>
+</section>
+
 <!-- THE FILM -->
-<section id="demo" style="padding-top:20px">
+<section id="demo" >
   <div class="wrap">
     <video controls preload="none" poster="media/sec-demo-poster.jpg"
            style="width:100%;border-radius:14px;border:1px solid var(--border2);display:block;
@@ -126,35 +176,43 @@ vault        <span class="ok">STRIPE_KEY.age (ciphertext)</span></pre>
   </div>
 </section>
 
-<!-- HOW -->
-<section id="how">
+<!-- AGENTS -->
+<section id="agents">
   <div class="wrap">
-    <div class="sec-kicker">how it works</div>
-    <h2 class="sec">Three moving parts, none of them a server.</h2>
-    <div class="grid3">
-      <div class="item">
-        <div class="n">01</div>
-        <h3>An age-encrypted vault</h3>
-        <p><code>~/.config/sec/vault/NAME.age</code> — X25519 via <b>filippo.io/age</b>, plus a
-        <code>NAME.json</code> of metadata. Ciphertext and names only, so the directory is safe to
-        commit to a private repo or <code>rclone sync</code>. Sync is deliberately not sec's job.</p>
-      </div>
-      <div class="item">
-        <div class="n">02</div>
-        <h3>A pluggable identity</h3>
-        <p>The same three backends <code>Bun.secrets</code> gives JS, plus a file:
-        <code>SEC_IDENTITY</code> (CI) &gt; OS keyring &gt; <code>identity.txt</code> (0400). macOS and
-        Windows default to the keyring; <b>Linux defaults to the file</b>, because a server has no Secret
-        Service and a desktop one is DBus that can block forever on a prompt nobody is there to answer.</p>
-      </div>
-      <div class="item">
-        <div class="n">03</div>
-        <h3>An owner check with no model in it</h3>
-        <p>A TTY on stdin — or an explicit <code>SEC_OWNER=1</code> — is the owner. Agent harnesses run
-        with a piped stdin, so they never have it. <code>get --print</code>, <code>export</code> and
-        every output-only path <b>fail by construction</b>, not by persuasion.</p>
-      </div>
+    <div class="sec-kicker">the harness, not the model</div>
+    <h2 class="sec">Four layers, so the agent never has to be trustworthy.</h2>
+    <div class="verbs">
+      <div class="verb"><b>the skill</b><span>A short <code>SKILL.md</code> index plus <code>references/*.md</code> —
+        commands, moving secrets, projects &amp; envs, permissions, identity, and <em>scenarios</em>
+        (worked tasks like "the key leaked", "set up the .env", "copy secrets to the server").
+        The agent loads only the page it needs.</span></div>
+      <div class="verb"><b>auto-refresh</b><span>The skill is <em>built into the binary</em>. <code>sec skill install</code>
+        writes that copy; every later <code>sec</code> run rewrites it when a new sec ships, so the
+        instructions never drift from the CLI. (<code>--from DIR</code> symlinks a checkout for development.)</span></div>
+      <div class="verb"><b>sec agent</b><span><code>sec agent claude</code> (or codex, devin, …) runs the agent with
+        <em>every paste and Enter checked for secrets</em> before the agent sees it, its shell set to
+        <code>sec sh</code>, and — for Claude — <code>sec hook</code> wired in for that session.</span></div>
+      <div class="verb"><b>sec sh</b><span>A shell for agents: <em>refuses reads of secret files</em>, fills
+        <code>{{NAME}}</code>, and redacts all output — so even a plain <code>cat .env</code> comes back empty-handed.</span></div>
+      <div class="verb"><b>sec hook</b><span>A Claude Code <em>PreToolUse guard</em> on Bash, Read, Write, Edit,
+        Grep, Glob and notebooks: a file that holds vault values is denied before the tool runs, and the
+        denial is an audit line.</span></div>
+      <div class="verb"><b>deny rules</b><span><code>sec skill install</code> merges these into
+        <code>~/.claude/settings.json</code> (skip with <code>--no-settings</code>).</span></div>
     </div>
+    <div class="term" style="margin-top:22px">
+      <div class="bar"><i></i><i></i><i></i><span>~/.claude/settings.json → permissions.deny</span></div>
+<pre>  Read(~/.config/sec/**)     <span class="cm"># the vault and the identity</span>
+  Read(**/.env)              <span class="cm"># the files sec writes for you</span>
+  Read(**/.env.*)
+  Bash(sec get:*)            <span class="cm"># the print path</span>
+  Bash(sec export:*)         <span class="cm"># the bulk print path</span>
+</pre>
+    </div>
+    <p class="cap">The same shape AWS now recommends for agents — a harness-level rule that blocks the
+    read-the-value call outright — but for any credential, not one cloud's. On top sits the owner check:
+    a TTY on stdin (or <code>SEC_OWNER=1</code>) is the owner; agent harnesses run with piped stdin, so
+    <code>get --print</code> and <code>export</code> fail by construction, not by persuasion.</p>
   </div>
 </section>
 
@@ -186,7 +244,47 @@ db:
   </div>
 </section>
 
+<!-- MOVE -->
+<section id="move">
+  <div class="wrap">
+    <div class="sec-kicker">past the laptop</div>
+    <h2 class="sec">Put it where the program already looks.</h2>
+    <p class="sec-sub">Programs never call sec. <code>sec push</code> writes a value — or a whole cert
+    file, or a folder — where the program reads it. <code>sec sync</code> moves secrets into
+    <em>another sec's</em> vault, sealed for its key. Both are remembered, so the next rotate updates every copy.</p>
+    <div class="term">
+      <div class="bar"><i></i><i></i><i></i><span>push · sync · remote</span></div>
+<pre><span class="cm"># push: plain files where programs read them</span>
+<span class="p">$</span> <span class="c">sec set TLS --from ./certs</span>
+<span class="ok">✓</span> TLS stored (v1, folder of 3 entries, 1824 bytes)
+<span class="p">$</span> <span class="c">sec push DB_PW,API_KEY ./app/.env</span>
+<span class="p">$</span> <span class="c">sec push TLS ssh://web/etc/app/certs</span>       <span class="cm"># needs only sh + tar there</span>
+<span class="p">$</span> <span class="c">sec push DB_PW docker://api/run/secrets/db_pw</span>
+
+<span class="cm"># sync: into the other machine's own sec vault — ssh, docker, podman, k8s, chained with +</span>
+<span class="p">$</span> <span class="c">sec sync DB_PW,API_KEY ssh://deploy@db.example.com</span>
+<span class="p">$</span> <span class="c">sec sync DB_PW docker://api --install</span>
+<span class="p">$</span> <span class="c">sec sync DB_PW k8s://prod/api-7d9f/app</span>
+<span class="p">$</span> <span class="c">sec sync DB_PW ssh://web+docker://api</span>      <span class="cm"># ssh in, then into a container (also podman://, k8s://)</span>
+<span class="p">$</span> <span class="c">sec sync DB_PW --from ssh://db --dry</span>
+
+<span class="cm"># remote: put sec itself there, or bring it to this version (no secrets move)</span>
+<span class="p">$</span> <span class="c">sec remote status ssh://db</span>
+<span class="p">$</span> <span class="c">sec remote upgrade ssh://db --dry</span>
+</pre>
+    </div>
+    <p class="cap">The value travels on stdin — never argv, never a temp file. Files are written to a temp
+    name and renamed; folders are unpacked beside the old one and swapped in, permissions kept. A
+    <b>first push or sync to a new machine</b> is owner-only: an agent cannot pick a new destination, but
+    re-pushes to the ones you set up happen on every rotate, and agents may sync to a target whose key is
+    already pinned (<code>sec target add</code>). No ssh at all? <code>sec export --for &lt;its sec id&gt;</code>
+    makes a sealed file only that vault can <code>sec import</code>.
+    <code>remote upgrade</code> keeps the previous binary and rolls back if the new one fails.</p>
+  </div>
+</section>
+
 <!-- ROTATE -->
+
 <section id="rotate">
   <div class="wrap">
     <div class="sec-kicker">the compromise-day question</div>
@@ -228,39 +326,6 @@ activity in the last 30 days (3):
   </div>
 </section>
 
-<!-- PUSH -->
-<section id="push">
-  <div class="wrap">
-    <div class="sec-kicker">past the laptop</div>
-    <h2 class="sec">Put it where the program already looks.</h2>
-    <p class="sec-sub">Programs never call sec. <code>sec push</code> writes the value — or a whole cert
-    file, or a whole folder — where the program reads it: a <code>.env</code>, a mounted volume, a server, a
-    container. And it remembers, so the next rotate rewrites every copy.</p>
-    <div class="term">
-      <div class="bar"><i></i><i></i><i></i><span>sec push NAMES WHERE</span></div>
-<pre><span class="p">$</span> <span class="c">sec set TLS --from ./certs</span>
-<span class="ok">✓</span> TLS stored (v1, folder of 3 entries, 1824 bytes)
-<span class="p">$</span> <span class="c">sec push DB_PW,API_KEY ./app/.env</span>
-<span class="ok">✓</span> DB_PW → file   /srv/myapp/app/.env  (DB_PW)
-<span class="ok">✓</span> API_KEY → file   /srv/myapp/app/.env  (API_KEY)
-<span class="p">$</span> <span class="c">sec push TLS /srv/myapp/certs</span>            <span class="cm"># docker run -v /srv/myapp/certs:/certs:ro …</span>
-<span class="p">$</span> <span class="c">sec push TLS ssh://hetzner/etc/myapp/certs</span>  <span class="cm"># needs only sh + tar there</span>
-<span class="p">$</span> <span class="c">sec push TLS docker://myapp/run/certs</span>
-<span class="p">$</span> <span class="c">sec rotate DB_PW --gen</span>
-<span class="ok">✓</span> DB_PW v1 → v2
-  <span class="ok">✓</span> file   /srv/myapp/app/.env  (DB_PW)
-</pre>
-    </div>
-    <p class="cap">The value travels on stdin — never argv, never a temp file. Files are written to a temp
-    name and renamed; folders are unpacked beside the old one and swapped in, permissions kept. Sending to
-    <b>another machine</b> is owner-only: an agent cannot pick a new destination, but re-pushes to the ones
-    you set up happen on every rotate.
-    <b>Another sec?</b> <code>sec push DB_PW ssh://hetzner</code> stores it in that machine's own vault and
-    keeps it in sync; with no ssh, <code>sec export --for &lt;its sec id&gt;</code> makes a sealed file only
-    that vault can <code>sec import</code>.</p>
-  </div>
-</section>
-
 <!-- OK -->
 <section id="ok">
   <div class="wrap">
@@ -286,11 +351,43 @@ activity in the last 30 days (3):
   </div>
 </section>
 
+<!-- HOW -->
+<section id="how">
+  <div class="wrap">
+    <div class="sec-kicker">how it works</div>
+    <h2 class="sec">Three moving parts, none of them a server.</h2>
+    <div class="grid3">
+      <div class="item">
+        <div class="n">01</div>
+        <h3>An age-encrypted vault</h3>
+        <p><code>~/.config/sec/vault/NAME.age</code> — X25519 via <b>filippo.io/age</b>, plus a
+        <code>NAME.json</code> of metadata. Ciphertext and names only, so the directory is safe to
+        commit to a private repo or <code>rclone sync</code>. Sync is deliberately not sec's job.</p>
+      </div>
+      <div class="item">
+        <div class="n">02</div>
+        <h3>A pluggable identity</h3>
+        <p>The same three backends <code>Bun.secrets</code> gives JS, plus a file:
+        <code>SEC_IDENTITY</code> (CI) &gt; OS keyring &gt; <code>identity.txt</code> (0400). macOS and
+        Windows default to the keyring; <b>Linux defaults to the file</b>, because a server has no Secret
+        Service and a desktop one is DBus that can block forever on a prompt nobody is there to answer.</p>
+      </div>
+      <div class="item">
+        <div class="n">03</div>
+        <h3>An owner check with no model in it</h3>
+        <p>A TTY on stdin — or an explicit <code>SEC_OWNER=1</code> — is the owner. Agent harnesses run
+        with a piped stdin, so they never have it. <code>get --print</code>, <code>export</code> and
+        every output-only path <b>fail by construction</b>, not by persuasion.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- VERBS -->
 <section>
   <div class="wrap">
     <div class="sec-kicker">the surface</div>
-    <h2 class="sec">Thirty verbs. You will use eight.</h2>
+    <h2 class="sec">Thirty-six commands. You will use eight.</h2>
     <div class="verbs">
       <div class="verb"><b>sec set</b><span>Store a value from stdin — <em>masked prompt on a TTY, never argv</em>.</span></div>
       <div class="verb"><b>sec exec</b><span>Run a command or script with <em>{{NAME}} placeholders filled</em>; output scrubbed.</span></div>
@@ -301,32 +398,12 @@ activity in the last 30 days (3):
       <div class="verb"><b>sec ok</b><span><em>Check everything</em>; re-push stale copies, list what needs you.</span></div>
       <div class="verb"><b>sec rotate</b><span>New value → <em>re-pushed to every placement</em> → manual steps listed honestly.</span></div>
     </div>
-    <p class="cap">The rest — <code>init · ls · env · render · import · export · place · recipients ·
-    identity · cert · audit · logs · keys · target · id · seal · sh · agent · hook · rm · get · skill</code> — are in the <a href="docs.html">docs</a>.
+    <p class="cap">The rest — <code>init · ls · get · rm · tag · use · project · file · import · env ·
+    render · seal · sh · agent · export · id · sync · remote · target · audit · logs · keys · place ·
+    cert · hook · identity · recipients · skill</code> — are in the <a href="docs.html">docs</a>, and
+    <code>sec help &lt;command&gt;</code> prints the syntax with examples.
     <code>sec cert</code> also does local TLS (CA, issue, self-signed) with keys written 0600, because
     a dev cert is a credential that usually ends up world-readable in <code>/tmp</code>.</p>
-  </div>
-</section>
-
-<!-- AGENT SKILL -->
-<section>
-  <div class="wrap">
-    <div class="sec-kicker">the harness, not the model</div>
-    <h2 class="sec">One command installs the skill and the deny rules.</h2>
-    <div class="term">
-      <div class="bar"><i></i><i></i><i></i><span>sec skill install</span></div>
-<pre><span class="p">$</span> <span class="c">sec skill install</span>
-<span class="cm"># symlinks skills/sec → ~/.claude/skills and ~/.agents/skills, then merges into</span>
-<span class="cm"># ~/.claude/settings.json → permissions.deny:</span>
-  Read(~/.config/sec/**)     <span class="cm"># the vault and the identity</span>
-  Read(**/.env*)             <span class="cm"># the files sec writes for you</span>
-  Bash(sec get:*)            <span class="cm"># the print path</span>
-  Bash(sec export:*)         <span class="cm"># the bulk print path</span>
-</pre>
-    </div>
-    <p class="cap">This is the same shape AWS now recommends for agents — a harness-level hook that
-    blocks the read-the-value call outright — except it's four lines in a settings file and works for
-    any credential, not one cloud's. The model is never asked to be trustworthy about it.</p>
   </div>
 </section>
 
@@ -344,26 +421,18 @@ activity in the last 30 days (3):
       the silly attempt is <b>visible</b>: an audit line names the secret, the command and the agent.
       Visible, not impossible. Anyone promising otherwise is selling you a proxy and a dashboard.</p>
     </div>
+  <p class="cap" style="margin-top:18px">How it compares with other secret managers: <a href="compare.html">compare</a>. Task-by-task walkthroughs: <a href="recipes.html">recipes</a>.</p>
   </div>
 </section>
 
 <section style="padding-top:20px">
   <div class="wrap">
-    <h2 class="sec">Install</h2>
-    <div class="term">
-      <div class="bar"><i></i><i></i><i></i><span>~60 seconds</span></div>
-<pre><span class="p">$</span> <span class="c">git clone https://github.com/muthuishere/sec &amp;&amp; cd sec</span>
-<span class="p">$</span> <span class="c">task install</span>   <span class="cm"># build → ~/.local/bin → link the skill → add the deny rules</span>
-<span class="p">$</span> <span class="c">sec init</span>
-<span class="ok">✓</span> initialised ~/.config/sec
-  public key : age19tgv4r8mzzakg9a94jvgs3fr9xj7p9zclwdny207f7n60puufq4sxyg3r3
-  identity   : keyring  →  macOS Keychain: service=tools.sec
-  vault dir  : ~/.config/sec/vault  (ciphertext only — safe to git-commit or rclone)
-  <span class="warn">⚠</span> key is in the OS credential store; export a backup with `sec identity export`
-</pre>
-    </div>
+    <h2 class="sec">Go further</h2>
     <div class="cta">
-      <a class="btn btn-primary" href="docs.html">Read the docs</a>
+      <a class="btn btn-primary" href="#install">Install</a>
+      <a class="btn btn-ghost" href="docs.html">Docs</a>
+      <a class="btn btn-ghost" href="recipes.html">Recipes</a>
+      <a class="btn btn-ghost" href="compare.html">Compare</a>
       <a class="btn btn-ghost" href="https://github.com/muthuishere/sec">Source on GitHub</a>
     </div>
   </div>
@@ -376,5 +445,15 @@ activity in the last 30 days (3):
   </div>
 </footer>
 
+<script>
+document.querySelectorAll('.itab').forEach(function(t){t.addEventListener('click',function(){
+  document.querySelectorAll('.itab').forEach(function(x){var on=x===t;x.classList.toggle('on',on);x.setAttribute('aria-selected',on)});
+  document.querySelectorAll('.ipanel').forEach(function(p){p.hidden=p.dataset.os!==t.dataset.os});
+});});
+document.querySelectorAll('.ipanel .copy').forEach(function(b){b.addEventListener('click',function(){
+  var txt=b.parentNode.querySelector('.c').textContent;
+  try{navigator.clipboard.writeText(txt).then(function(){b.textContent='copied';setTimeout(function(){b.textContent='copy'},1500)})}catch(e){}
+});});
+</script>
 </body>
 </html>
