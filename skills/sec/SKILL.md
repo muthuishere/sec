@@ -15,8 +15,7 @@ description: >
 # sec — the credentials broker
 
 You never hold a secret value. You hold **names**; `sec` holds the values (age-encrypted vault,
-`~/.config/sec/`, `SEC_HOME` overrides). Unsure of a syntax? `sec help <cmd>` or
-`sec <cmd> --help` — exact usage, examples, owner-only flags. Moving secrets: `sec help move`.
+`~/.config/sec/`, `SEC_HOME` overrides). Exact syntax for any command: `sec help <cmd>`.
 
 ## The one rule
 
@@ -25,75 +24,9 @@ back with every value (and its base64/hex/url forms) replaced by `[REDACTED:NAME
 
 ```bash
 sec ls --json                                                    # names, never values
-sec exec -- psql "postgres://app:{{reqsume@production:POSTGRES_PASSWORD}}@db/app"  # scoped name
 sec exec -- curl -sS https://api.x.com -H "Authorization: Bearer {{STRIPE_KEY}}"
 sec run STRIPE_KEY,DB_URL=DATABASE_URL -- go test ./...          # as env vars
 ```
-
-## Task → command
-
-| task | command |
-|---|---|
-| what credentials exist | `sec ls --json` (`--tag T`) |
-| run something with a credential | `sec exec -- CMD … {{NAME}} …` · script: `sec exec -f s.sh` |
-| tool wants env vars | `sec run NAME[=VAR],NAME2 -- CMD` |
-| config file needs secrets | `sec render TEMPLATE --out FILE` (0600, recorded) |
-| file already holds real values / safe to commit? | `sec seal FILE` · `sec seal FILE --check` (exit 1 = found) |
-| new password / token | `sec gen --save NAME [--env production=VAR] [--hex --len 32]` |
-| user pasted a value in chat | `sec set NAME <<'EOF' … EOF`, then recommend `sec rotate NAME` |
-| store a file or folder (service-account JSON, cert, key dir) | `sec file add ./sa.json` (name from the file: `SA_JSON`) or `sec file add ./certs TLS` |
-| get a stored file/folder back | `sec file get SA_JSON` prints it to stdout as-is (folder = tar.gz); `sec file get SA_JSON -o ./sa.json` writes it; `sec file ls` lists them |
-| tag secrets/files by project (many per item) | `sec tag NAME reqsume,firebase` (replace) · `sec tag NAME liveconv --add` · `sec file add PATH --tag a,b` · filter `sec ls --tag reqsume` / `sec file ls --tag reqsume` |
-| a repo `.env` into the vault | `sec import .env.production --project reqsume --env production` (keys land in `reqsume@production`, no collision with global or other envs) |
-| which projects / envs exist | `sec project ls` · `sec ls --project P --env E` (PROJECT, ENV columns; `--json` has `project`, `env`) |
-| work inside one project/env | `sec use reqsume --env dev` (show: `sec use`, clear: `sec use --unset`) · per command `--project P --env E` · `SEC_PROJECT`/`SEC_ENV` |
-| a daemon / program with no TTY needs the value in a file | `sec get NAME --out FILE` — new 0600 file, never stdout, refuses an existing file or symlink, audited |
-| **copy secrets to a server / container / pod running sec** | `sec sync A,B ssh://host` · `docker://ctr` · `podman://ctr` · `k8s://[ctx/]ns/pod[/ctr]` |
-| …a container / pod on a server | chain hops with `+`: `ssh://web+docker://api` · `ssh://web+k8s://ns/pod` · `ssh://bastion+ssh://db` |
-| pull secrets back from one | `sec sync A,B --from ssh://host` |
-| what sec is on a machine / is it current | `sec remote status WHERE` (any sync route) |
-| install / upgrade / remove sec there (owner) | `sec remote install\|upgrade\|uninstall WHERE` — `--dry` first; you hand the owner the command |
-| check before sending | `sec sync A,B WHERE --dry` (names + remote key fingerprint, sends nothing) |
-| a program there reads a file / .env / folder | `sec push NAME WHERE` (`./app/.env`, `ssh://h/etc/app/certs`, `docker://c/run/secrets`) |
-| no connection at all | owner: `sec export --only A,B --for <their sec id> --out x.sec`; there: `sec import x.sec` |
-| GitHub / GCP secret | `sec place NAME --gh owner/repo[:env]` · `--gcp project` |
-| which env files exist / their keys | `sec env list` · `sec env ls production` |
-| which keys a project lacks | `sec keys` (exit 1 if any missing) |
-| where a secret lives / was used | `sec where NAME` · `sec logs NAME --since 7d` |
-| leak suspected | `sec where NAME` + `sec audit --name NAME --since 7d`, then rotate |
-| replace a value everywhere | `sec rotate NAME --gen [--hook s.sh]`, or owner pastes: `sec rotate NAME` |
-| is everything in sync | `sec ok --dry` (report) · `sec ok` (re-push stale copies only) |
-| local TLS | `sec cert ca`, then `sec cert issue --cn host --san a,b --out dir` |
-
-## You may run vs owner-only
-
-| you (agent) may run | owner-only — stop and give the owner the exact command |
-|---|---|
-| `ls exec run render seal gen set import keys where logs audit ok env id` | `get --print` — prints a value |
-| `sec sync` to a target whose key is **pinned or saved** | `sec sync` **first contact**, `--install`, `--repin` |
-| `sec sync --from` a pinned target | `export` (sealed or `--confirm` plaintext) |
-| `push` / `rotate` / `ok` re-pushing to **recorded** places | first `push` to another machine (`ssh://`, `docker://`, `k8s://`) |
-| `sec target ls`, `sec remote status` | `identity move/export/import/adopt`, `--allow-output-only` |
-| | `sec remote install/upgrade/uninstall` · `--purge` **never** (owner typing at a terminal only) |
-
-Owner = a TTY on stdin or `SEC_OWNER=1`. Never set `SEC_OWNER` yourself.
-
-`SEC_READONLY=1` (CI, e2e runs) means the vault can only be used: `ls run exec render seal keys
-where logs audit env id use project`. Anything else is refused — report it, don't work around it.
-
-**sec sync trust:** the remote key is pinned per target (TOFU). First contact needs the owner
-(or the owner saves it: `sec target add db-key age1…`). If sync says **REMOTE KEY CHANGED**,
-stop and tell the owner — it may be an impersonated host; only they `--repin`. If it says
-**sec not found**, give the owner `sec sync … --install`: it detects the OS (Linux, macOS, FreeBSD,
-Windows over ssh) and streams sec into that user's own folder — never root, sudo or Administrator.
-
-## Claude harness deny rules
-
-`sec skill install` adds to `~/.claude/settings.json` `permissions.deny`: `Read(~/.config/sec/**)`,
-`Read(**/.env*)`, `Bash(sec get:*)`, `Bash(sec export:*)`. The harness refuses those, not you.
-**`sec sync` is deliberately NOT denied** — it never shows a value and only the remote vault can
-open what it sends; the trust check above is what gates it. Do not add a deny for it, and do not
-reach for `sec export` + `scp` when `sec sync` fits.
 
 ## Hard rules
 
@@ -107,40 +40,16 @@ reach for `sec export` + `scp` when `sec sync` fits.
    `sec sync`, `sec push`, `sec place` keep the vault authoritative and rotation reaching the copy.
 7. A value transited chat → say so and recommend `sec rotate NAME`.
 8. Report names, never values — not even a fragment.
+9. Owner-only commands (`get --print`, `export`, first contact, `remote install`, `identity …`):
+   stop and give the owner the exact command. Never set `SEC_OWNER` yourself.
 
-## Environments — never assume `.env`
+## Where to look — read the file when the situation matches
 
-Repos have several (`.env`, `.env.local`, `infra/…/.env.production`). Pass an environment
-**name** and sec resolves it; always `sec env list` first (it re-scans), never reuse a path from
-earlier. Ask which environment when the task doesn't say. Templates (`.env.example`, …) are
-refused as write targets.
-
-## How you were started — `sec agent`
-
-`SEC_AGENT_WRAPPED=<agent>` in your env means the owner's keyboard went through sec first: a
-pasted secret was stored and replaced with `{{NAME}}` before you saw it. Check `sec ls --json`
-and ask for a **name**, never for the value.
-
-## Identity
-
-`sec identity` shows where the key lives (never the key). "no usable identity" → report the
-commands it prints and stop. **Never run `sec init` to fix it** — on a synced vault that orphans
-every secret.
-
-## Projects and environments
-
-A secret's identity is (project, env, NAME); both parts are optional. Address it anywhere a NAME
-goes — `ls`, `rm`, `tag`, `where`, `logs`, `rotate`, `place`, `push`, `sync`, `get`, `run`, `{{…}}`:
-
-| address | meaning |
+| when | read |
 |---|---|
-| `NAME` | resolved in the current context: `project@env:NAME`, then `project:NAME`, then global `NAME` |
-| `reqsume:NAME` | project `reqsume`, no env (projects may nest: `reqsume/api:NAME`) |
-| `reqsume@production:NAME` | project `reqsume`, env `production` |
-| `@dev:NAME` | env only |
-
-`sec exec -- psql "postgres://app:{{reqsume@production:POSTGRES_PASSWORD}}@db/app"` ·
-`sec run reqsume@production:POSTGRES_PASSWORD=PGPASSWORD -- psql` (no `=VAR` → `$POSTGRES_PASSWORD`).
-Context precedence: qualified name > `--project/--env` > `SEC_PROJECT/SEC_ENV` > `sec use`. Writes
-(set, gen, import) go to the current context. Use projects, not NAME prefixes; tags stay labels.
-sync/push to another sec carry the scope. The vault dir is ciphertext: the owner may git/rclone it.
+| you need the command for a task (run, env vars, render, seal, gen, files, tags, import, audit, rotate, cert) | [references/commands.md](references/commands.md) |
+| secrets must reach a server, container, pod, CI, or a machine with no connection | [references/moving.md](references/moving.md) |
+| unsure whether you may run something, a sync warning appears, vault is read-only, deny rules | [references/permissions.md](references/permissions.md) |
+| `project@env:NAME`, `sec use`, several `.env` files, which environment | [references/projects-and-envs.md](references/projects-and-envs.md) |
+| `SEC_AGENT_WRAPPED` is set, "no usable identity" | [references/identity-and-agent.md](references/identity-and-agent.md) |
+| you want a worked flow end to end (call an API, set up a `.env`, deploy certs, sync to a pod, respond to a leak, CI) | [scenarios.md](scenarios.md) |

@@ -87,3 +87,29 @@ func TestReadOnlyRefusesWrites(t *testing.T) {
 		}
 	}
 }
+
+func TestSkillIsIndexWithReferencesAndRefreshes(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("SEC_SKILL_DIR", "")
+	t.Setenv("CLAUDE_CONFIG_DIR", "")
+	if err := cmdSkill([]string{"install", "--no-settings"}); err != nil {
+		t.Fatal(err)
+	}
+	dir := filepath.Join(home, ".claude", "skills", "sec")
+	for _, f := range []string{"SKILL.md", "scenarios.md", "references/commands.md", "references/moving.md", "references/permissions.md"} {
+		if _, err := os.Stat(filepath.Join(dir, f)); err != nil {
+			t.Fatalf("missing %s: %v", f, err)
+		}
+	}
+	b, _ := os.ReadFile(filepath.Join(dir, "SKILL.md"))
+	if n := strings.Count(string(b), "\n"); n > 70 {
+		t.Fatalf("SKILL.md is %d lines; it must stay an index", n)
+	}
+	// a stale reference file is rewritten by any sec run
+	os.WriteFile(filepath.Join(dir, "references", "moving.md"), []byte("stale"), 0o644)
+	refreshSkills()
+	if m, _ := os.ReadFile(filepath.Join(dir, "references", "moving.md")); string(m) == "stale" {
+		t.Fatal("refreshSkills left a stale file")
+	}
+}

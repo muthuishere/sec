@@ -197,4 +197,4 @@ audit line for every use make the silly attempt visible, not impossible.
 ## Layout
 
 `cmd/sec` · `internal/{store,tmpl,redact,execx,gen,envfile,cert,place,owner,cli,detect,agentpty}` ·
-`skills/sec/SKILL.md` · `hooks/` (rotation hooks: postgres, aws-iam) · `scripts/smoke.sh`.
+`skills/sec/` (`SKILL.md` is a short index; `references/*.md` hold commands, moving, permissions, projects, identity; `scenarios.md` has the worked flows) · `hooks/` (rotation hooks: postgres, aws-iam) · `scripts/smoke.sh`.

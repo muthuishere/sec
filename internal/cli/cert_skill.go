@@ -136,7 +136,7 @@ func cmdSkill(args []string) error {
 		if err := os.MkdirAll(dst, 0o755); err != nil {
 			return err
 		}
-		if err := os.WriteFile(filepath.Join(dst, "SKILL.md"), skills.SecSkill, 0o644); err != nil {
+		if err := skills.Write(dst); err != nil {
 			return err
 		}
 		fmt.Printf("✓ %s (sec %s)\n", dst, version.Version)
@@ -167,7 +167,7 @@ func clearSkillDir(dst string) error {
 	}
 	entries, _ := os.ReadDir(dst)
 	for _, e := range entries {
-		if e.Name() != "SKILL.md" {
+		if !skills.Owns(e.Name()) {
 			return fmt.Errorf("%s holds files sec did not write (%s) — move them, then re-run", dst, e.Name())
 		}
 	}
@@ -243,13 +243,24 @@ func skillRoots() []string {
 // folders holding other files alone.
 func refreshSkills() {
 	for _, root := range skillRoots() {
-		p := filepath.Join(root, "sec", "SKILL.md")
-		fi, err := os.Lstat(filepath.Dir(p))
+		dst := filepath.Join(root, "sec")
+		fi, err := os.Lstat(dst)
 		if err != nil || !fi.IsDir() || fi.Mode()&os.ModeSymlink != 0 {
 			continue
 		}
-		if cur, err := os.ReadFile(p); err == nil && string(cur) != string(skills.SecSkill) {
-			_ = os.WriteFile(p, skills.SecSkill, 0o644)
+		if es, _ := os.ReadDir(dst); len(es) > 0 {
+			foreign := false
+			for _, e := range es {
+				foreign = foreign || !skills.Owns(e.Name())
+			}
+			if foreign {
+				continue // someone else's folder
+			}
+		}
+		if !skills.Current(dst) {
+			_ = clearSkillDir(dst)
+			_ = os.MkdirAll(dst, 0o755)
+			_ = skills.Write(dst)
 		}
 	}
 }
