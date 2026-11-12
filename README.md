@@ -71,6 +71,13 @@ and can `sec ls` for a name whose value it was never shown.
 
 ## Install
 
+macOS / Linux: `curl -fsSL https://raw.githubusercontent.com/muthuishere/sec/main/install.sh | sh`
+Windows (cmd): `curl.exe -fsSLO https://raw.githubusercontent.com/muthuishere/sec/main/install.cmd && install.cmd`
+
+Both install `sec` and the agent skill; re-run to upgrade. After that, any `sec` run refreshes an installed skill by itself when the binary is newer.
+
+From a checkout:
+
 ```bash
 task install        # builds, copies to ~/.local/bin, links the agent skill, adds harness deny rules
 sec init

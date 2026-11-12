@@ -52,6 +52,9 @@ func Main(args []string) int {
 		fmt.Println("sec", version.String())
 		return 0
 	}
+	if !store.ReadOnly() {
+		refreshSkills()
+	}
 	for _, c := range commands {
 		if c.name == args[0] {
 			if wantsHelp(c.name, args[1:]) && printHelp(c.name) {

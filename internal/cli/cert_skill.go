@@ -225,3 +225,31 @@ func mergeDeny(path string) error {
 	fmt.Printf("✓ %s: %d deny rule(s) added (%d already present)\n", path, added, len(denyRules)-added)
 	return nil
 }
+
+// skillRoots lists every place `sec skill install` puts the skill.
+func skillRoots() []string {
+	home, _ := os.UserHomeDir()
+	roots := []string{filepath.Join(home, ".agents", "skills"), filepath.Join(home, ".claude", "skills")}
+	if d := os.Getenv("CLAUDE_CONFIG_DIR"); d != "" && filepath.Clean(d) != filepath.Join(home, ".claude") {
+		roots = append(roots, filepath.Join(d, "skills"))
+	}
+	return roots
+}
+
+// refreshSkills keeps an installed skill current: when a copy sec wrote
+// differs from the one built into this binary (a new sec was installed), it is
+// rewritten in place. Silent, never installs where there is none (that stays
+// the explicit `sec skill install`), and leaves symlinks (a dev checkout) and
+// folders holding other files alone.
+func refreshSkills() {
+	for _, root := range skillRoots() {
+		p := filepath.Join(root, "sec", "SKILL.md")
+		fi, err := os.Lstat(filepath.Dir(p))
+		if err != nil || !fi.IsDir() || fi.Mode()&os.ModeSymlink != 0 {
+			continue
+		}
+		if cur, err := os.ReadFile(p); err == nil && string(cur) != string(skills.SecSkill) {
+			_ = os.WriteFile(p, skills.SecSkill, 0o644)
+		}
+	}
+}
