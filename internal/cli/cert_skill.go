@@ -7,6 +7,9 @@ import (
 	"github.com/muthuishere/sec/skills"
 	"os"
 	"path/filepath"
+	"strings"
+
+	"github.com/muthuishere/sec/internal/store"
 
 	"github.com/muthuishere/sec/internal/cert"
 	"github.com/muthuishere/sec/internal/owner"
@@ -222,7 +225,9 @@ func mergeDeny(path string) error {
 	if err := os.WriteFile(path, append(b, '\n'), 0o600); err != nil {
 		return err
 	}
-	fmt.Printf("✓ %s: %d deny rule(s) added (%d already present)\n", path, added, len(denyRules)-added)
+	if !quietDeny {
+		fmt.Printf("✓ %s: %d deny rule(s) added (%d already present)\n", path, added, len(denyRules)-added)
+	}
 	return nil
 }
 
@@ -242,6 +247,7 @@ func skillRoots() []string {
 // the explicit `sec skill install`), and leaves symlinks (a dev checkout) and
 // folders holding other files alone.
 func refreshSkills() {
+	firstRun()
 	for _, root := range skillRoots() {
 		dst := filepath.Join(root, "sec")
 		fi, err := os.Lstat(dst)
@@ -262,5 +268,44 @@ func refreshSkills() {
 			_ = os.MkdirAll(dst, 0o755)
 			_ = skills.Write(dst)
 		}
+	}
+}
+
+// firstRun installs the skill the first time sec runs on a machine, so a bare
+// download (no installer, no `sec skill install`) still teaches the agents.
+// A stamp in the sec home makes it once only: a skill the owner later removes
+// stays removed.
+var quietDeny bool // firstRun must not write to stdout (sec ls --json)
+
+func firstRun() {
+	stamp := filepath.Join(store.Home(), "skill-installed")
+	if _, err := os.Stat(stamp); err == nil {
+		return
+	}
+	var done []string
+	for _, root := range skillRoots() {
+		dst := filepath.Join(root, "sec")
+		if _, err := os.Lstat(dst); err == nil {
+			continue
+		}
+		if os.MkdirAll(dst, 0o755) == nil && skills.Write(dst) == nil {
+			done = append(done, dst)
+		}
+	}
+	home, _ := os.UserHomeDir()
+	claudeDirs := []string{filepath.Join(home, ".claude")}
+	if d := os.Getenv("CLAUDE_CONFIG_DIR"); d != "" && filepath.Clean(d) != claudeDirs[0] {
+		claudeDirs = append(claudeDirs, d)
+	}
+	quietDeny = true
+	for _, d := range claudeDirs {
+		_ = mergeDeny(filepath.Join(d, "settings.json"))
+	}
+	quietDeny = false
+	if os.MkdirAll(filepath.Dir(stamp), 0o700) == nil {
+		_ = os.WriteFile(stamp, nil, 0o600)
+	}
+	if len(done) > 0 {
+		fmt.Fprintf(os.Stderr, "sec: first run — agent skill installed in %s\n", strings.Join(done, ", "))
 	}
 }

@@ -38,6 +38,9 @@ var readOnlyOK = map[string]bool{
 }
 
 func Main(args []string) int {
+	if !store.ReadOnly() {
+		refreshSkills() // first run installs the skill; later runs keep it current
+	}
 	if len(args) == 0 || args[0] == "help" || args[0] == "-h" || args[0] == "--help" {
 		if len(args) > 1 && args[0] == "help" {
 			if printHelp(args[1]) {
@@ -51,9 +54,6 @@ func Main(args []string) int {
 	if args[0] == "version" || args[0] == "--version" || args[0] == "-v" {
 		fmt.Println("sec", version.String())
 		return 0
-	}
-	if !store.ReadOnly() {
-		refreshSkills()
 	}
 	for _, c := range commands {
 		if c.name == args[0] {
