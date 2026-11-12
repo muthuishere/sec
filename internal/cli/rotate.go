@@ -277,7 +277,7 @@ func cmdAudit(args []string) error {
 	if *retired {
 		names, _ := s.List()
 		for _, n := range names {
-			m, err := s.Meta(n)
+			m, err := s.MetaExact(n)
 			if err != nil || len(m.Retired) == 0 {
 				continue
 			}

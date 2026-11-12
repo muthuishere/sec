@@ -71,7 +71,7 @@ func cmdOk(args []string) error {
 	fixed, current := 0, 0
 	var unknown, gone, relative []string
 	for _, n := range names {
-		m, err := s.Meta(n)
+		m, err := s.MetaExact(n)
 		if err != nil || len(m.Placements) == 0 {
 			continue
 		}
@@ -148,7 +148,7 @@ func cmdOk(args []string) error {
 
 	// 3. Old versions that were replaced but maybe never revoked upstream.
 	for _, n := range names {
-		m, err := s.Meta(n)
+		m, err := s.MetaExact(n)
 		if err != nil || len(m.Retired) == 0 {
 			continue
 		}

@@ -117,7 +117,9 @@ run next — and a wrong usage prints the closest correct command.
   current context — `project@env`, then `project`, then global — set by `sec use P [--env E]`
   (saved in `context.json`), overridden by `SEC_PROJECT`/`SEC_ENV`, overridden by
   `--project/--env` on any command or a qualified name. Writes (`set`, `gen`, `import`) go to the
-  context: `sec import .env.production --project reqsume --env production`. `sec ls` shows
+  context: `sec import .env` in a repo puts the keys in a project named after the repo/folder and the folder
+  remembers it (back there, bare names resolve in it first; `--project NAME` picks a custom name);
+  explicit: `sec import .env.production --project reqsume --env production`. `sec ls` shows
   PROJECT/ENV, `sec project ls` counts per project and env. `sync`/`push` to another sec carry
   the scope (the far end needs this version to accept a scoped name).
 - **Files and tags**: `sec file add PATH [NAME] [--tag a,b]` stores a whole file or folder,

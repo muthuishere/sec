@@ -229,7 +229,7 @@ func cmdLs(args []string) error {
 	used := s.LastUsed()
 	var rows []lsRow
 	for _, n := range names {
-		m, err := s.Meta(n)
+		m, err := s.MetaExact(n)
 		if err != nil {
 			continue
 		}

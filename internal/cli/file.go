@@ -136,7 +136,7 @@ func cmdFile(args []string) error {
 		}
 		n := 0
 		for _, nm := range names {
-			m, err := s.Meta(nm)
+			m, err := s.MetaExact(nm)
 			if err != nil || (m.Kind != bundle.KindFile && m.Kind != bundle.KindDir) || (want != "" && !hasTag(m, want)) {
 				continue
 			}

@@ -134,3 +134,29 @@ func TestLegacyVault(t *testing.T) {
 		t.Fatal("global fallback")
 	}
 }
+
+func TestFolderRemembersProject(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("SEC_HOME", filepath.Join(home, "sec"))
+	t.Setenv("SEC_PROJECT", "")
+	repo := filepath.Join(home, "My App")
+	os.MkdirAll(filepath.Join(repo, ".git"), 0o755)
+	os.MkdirAll(filepath.Join(repo, "sub"), 0o755)
+	wd, _ := os.Getwd()
+	defer os.Chdir(wd)
+	os.Chdir(filepath.Join(repo, "sub"))
+	if got := FolderProjectName(FolderRoot()); got != "my-app" {
+		t.Fatalf("folder project %q", got)
+	}
+	if err := RememberFolder("billing"); err != nil {
+		t.Fatal(err)
+	}
+	if c := CurrentContext(); c.Project != "billing" {
+		t.Fatalf("context in folder = %+v", c)
+	}
+	os.Chdir(home)
+	if c := CurrentContext(); c.Project != "" {
+		t.Fatalf("$HOME must not take a folder project: %+v", c)
+	}
+}

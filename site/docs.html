@@ -177,7 +177,11 @@ sec init --backend file          # servers, containers, CI</pre>
     goes, including inside <code>{{…}}</code>. Bare names resolve in the current context:
     <code>project@env</code>, then <code>project</code>, then global. Precedence:
     <code>--project</code>/<code>--env</code> on any command and explicit scoped names beat
-    <code>SEC_PROJECT</code>/<code>SEC_ENV</code>, which beat <a href="#use-cmd"><code>sec use</code></a>.
+    <code>SEC_PROJECT</code>/<code>SEC_ENV</code>, which beat the folder's project, which beats <a href="#use-cmd"><code>sec use</code></a>.</p>
+    <p><b>Folder = project by default.</b> <code>sec import .env</code> inside a repo (or any folder) stores the keys in a
+    project named after the repo root or folder (<code>My App</code> → <code>my-app</code>), or the <code>--project NAME</code> you give,
+    and the folder remembers it. Come back to that repo — from any subfolder — and bare names resolve there first, then global,
+    with no flag and no <code>sec use</code>. <code>$HOME</code> and <code>/</code> never get one.
     With <code>sec run</code> a scoped name arrives as its plain <code>NAME</code> env var.</p>
 
     <!-- 4 -->

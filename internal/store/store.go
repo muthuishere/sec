@@ -103,7 +103,8 @@ func validScope(sc string) error {
 }
 
 // Context is the scope bare names resolve in. Precedence: SEC_PROJECT /
-// SEC_ENV (also set by --project / --env) over the context saved by `sec use`.
+// SEC_ENV (also set by --project / --env), then the folder's remembered
+// project, then the context saved by `sec use`.
 // Each variable overrides independently; set it to "-" to force it empty.
 type Context struct {
 	Project string `json:"project,omitempty"`
@@ -148,9 +149,13 @@ func SaveContext(c Context) error {
 	return os.WriteFile(contextPath(), append(b, '\n'), 0o600)
 }
 
-// CurrentContext applies SEC_PROJECT / SEC_ENV over the saved context.
+// CurrentContext: SEC_PROJECT / SEC_ENV (and --project / --env) win, then the
+// project remembered for this folder (sec import here), then `sec use`.
 func CurrentContext() Context {
 	c := SavedContext()
+	if p := FolderProject(); p != "" {
+		c.Project = p
+	}
 	if v, ok := os.LookupEnv("SEC_PROJECT"); ok && v != "" {
 		c.Project = v
 	}
@@ -669,7 +674,12 @@ func (s *Store) Meta(name string) (*Meta, error) {
 	if err := ValidName(name); err != nil {
 		return nil, err
 	}
-	key := s.Key(name)
+	return s.MetaExact(s.Key(name))
+}
+
+// MetaExact loads the metadata of a vault key as listed by List, without
+// resolving it in the current context (a global NAME stays global).
+func (s *Store) MetaExact(key string) (*Meta, error) {
 	b, err := os.ReadFile(s.metaPath(key))
 	if err != nil {
 		return nil, err
