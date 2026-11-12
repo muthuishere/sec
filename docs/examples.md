@@ -122,5 +122,5 @@ Output is scrubbed. Sending to a new machine (`push` to ssh/docker/k8s,
 `export`) is owner-only; re-pushes to places the owner already set up happen
 on rotate whoever runs it.
 
-**Repo / environment–scoped secrets** (myapp/prod vs myapp/dev, shared with a
-team through a bucket) belong in vsync; sec stays a flat personal vault.
+**Project / environment–scoped secrets**: `sec import .env.production --project myapp --env prod`,
+then `sec use myapp --env prod` or address them as `myapp@prod:DB_PW`. `sec project ls` lists them.
