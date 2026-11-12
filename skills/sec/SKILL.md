@@ -52,4 +52,4 @@ sec run STRIPE_KEY,DB_URL=DATABASE_URL -- go test ./...          # as env vars
 | unsure whether you may run something, a sync warning appears, vault is read-only, deny rules | [references/permissions.md](references/permissions.md) |
 | `project@env:NAME`, `sec use`, several `.env` files, which environment | [references/projects-and-envs.md](references/projects-and-envs.md) |
 | `SEC_AGENT_WRAPPED` is set, "no usable identity" | [references/identity-and-agent.md](references/identity-and-agent.md) |
-| you want a worked flow end to end (call an API, set up a `.env`, deploy certs, sync to a pod, respond to a leak, CI) | [scenarios.md](scenarios.md) |
+| you want a worked flow end to end (call an API, set up a `.env`, deploy certs, sync to a pod, respond to a leak, CI) | [references/scenarios.md](references/scenarios.md) |

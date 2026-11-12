@@ -1,6 +1,6 @@
 # Moving secrets between machines, containers, pods, CI
 
-Trust and who-may-run-what: [permissions.md](permissions.md). Walkthroughs: [../scenarios.md](../scenarios.md).
+Trust and who-may-run-what: [permissions.md](permissions.md). Walkthroughs: [scenarios.md](scenarios.md).
 
 | task | command |
 |---|---|

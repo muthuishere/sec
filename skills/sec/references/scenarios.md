@@ -1,6 +1,6 @@
 # Scenarios
 
-Worked flows, step by step. Syntax is in [references/commands.md](references/commands.md); anything marked **owner** you hand to the owner as an exact command (see [references/permissions.md](references/permissions.md)).
+Worked flows, step by step. Syntax is in [commands.md](commands.md); anything marked **owner** you hand to the owner as an exact command (see [permissions.md](permissions.md)).
 
 ## 1. Call an API with a key
 1. `sec ls --json` — is the name there?

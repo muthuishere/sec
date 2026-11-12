@@ -97,7 +97,7 @@ func TestSkillIsIndexWithReferencesAndRefreshes(t *testing.T) {
 		t.Fatal(err)
 	}
 	dir := filepath.Join(home, ".claude", "skills", "sec")
-	for _, f := range []string{"SKILL.md", "scenarios.md", "references/commands.md", "references/moving.md", "references/permissions.md"} {
+	for _, f := range []string{"SKILL.md", "references/scenarios.md", "references/commands.md", "references/moving.md", "references/permissions.md"} {
 		if _, err := os.Stat(filepath.Join(dir, f)); err != nil {
 			t.Fatalf("missing %s: %v", f, err)
 		}
