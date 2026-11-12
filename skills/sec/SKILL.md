@@ -25,6 +25,7 @@ back with every value (and its base64/hex/url forms) replaced by `[REDACTED:NAME
 
 ```bash
 sec ls --json                                                    # names, never values
+sec exec -- psql "postgres://app:{{reqsume@production:POSTGRES_PASSWORD}}@db/app"  # scoped name
 sec exec -- curl -sS https://api.x.com -H "Authorization: Bearer {{STRIPE_KEY}}"
 sec run STRIPE_KEY,DB_URL=DATABASE_URL -- go test ./...          # as env vars
 ```
@@ -40,8 +41,13 @@ sec run STRIPE_KEY,DB_URL=DATABASE_URL -- go test ./...          # as env vars
 | file already holds real values / safe to commit? | `sec seal FILE` · `sec seal FILE --check` (exit 1 = found) |
 | new password / token | `sec gen --save NAME [--env production=VAR] [--hex --len 32]` |
 | user pasted a value in chat | `sec set NAME <<'EOF' … EOF`, then recommend `sec rotate NAME` |
-| a cert / key file / folder | `sec set NAME --from ./certs` |
-| a repo `.env` into the vault | `sec import production --tag <project>` |
+| store a file or folder (service-account JSON, cert, key dir) | `sec file add ./sa.json` (name from the file: `SA_JSON`) or `sec file add ./certs TLS` |
+| get a stored file/folder back | `sec file get SA_JSON` prints it to stdout as-is (folder = tar.gz); `sec file get SA_JSON -o ./sa.json` writes it; `sec file ls` lists them |
+| tag secrets/files by project (many per item) | `sec tag NAME reqsume,firebase` (replace) · `sec tag NAME liveconv --add` · `sec file add PATH --tag a,b` · filter `sec ls --tag reqsume` / `sec file ls --tag reqsume` |
+| a repo `.env` into the vault | `sec import .env.production --project reqsume --env production` (keys land in `reqsume@production`, no collision with global or other envs) |
+| which projects / envs exist | `sec project ls` · `sec ls --project P --env E` (PROJECT, ENV columns; `--json` has `project`, `env`) |
+| work inside one project/env | `sec use reqsume --env dev` (show: `sec use`, clear: `sec use --unset`) · per command `--project P --env E` · `SEC_PROJECT`/`SEC_ENV` |
+| a daemon / program with no TTY needs the value in a file | `sec get NAME --out FILE` — new 0600 file, never stdout, refuses an existing file or symlink, audited |
 | **copy secrets to a server / container / pod running sec** | `sec sync A,B ssh://host` · `docker://ctr` · `podman://ctr` · `k8s://[ctx/]ns/pod[/ctr]` |
 | …a container / pod on a server | chain hops with `+`: `ssh://web+docker://api` · `ssh://web+k8s://ns/pod` · `ssh://bastion+ssh://db` |
 | pull secrets back from one | `sec sync A,B --from ssh://host` |
@@ -120,5 +126,20 @@ every secret.
 
 ## Scope
 
-sec is flat — no app/env hierarchy. Namespaced team secrets belong in **vsync**; don't fake
-namespaces with prefixes. The vault dir is ciphertext: the owner may git/rclone it.
+## Projects and environments
+
+A secret's identity is (project, env, NAME); both parts are optional. Address it anywhere a NAME
+goes — `ls`, `rm`, `tag`, `where`, `logs`, `rotate`, `place`, `push`, `sync`, `get`, `run`, `{{…}}`:
+
+| address | meaning |
+|---|---|
+| `NAME` | resolved in the current context: `project@env:NAME`, then `project:NAME`, then global `NAME` |
+| `reqsume:NAME` | project `reqsume`, no env (projects may nest: `reqsume/api:NAME`) |
+| `reqsume@production:NAME` | project `reqsume`, env `production` |
+| `@dev:NAME` | env only |
+
+`sec exec -- psql "postgres://app:{{reqsume@production:POSTGRES_PASSWORD}}@db/app"` ·
+`sec run reqsume@production:POSTGRES_PASSWORD=PGPASSWORD -- psql` (no `=VAR` → `$POSTGRES_PASSWORD`).
+Context precedence: qualified name > `--project/--env` > `SEC_PROJECT/SEC_ENV` > `sec use`. Writes
+(set, gen, import) go to the current context. Use projects, not NAME prefixes; tags stay labels.
+sync/push to another sec carry the scope. The vault dir is ciphertext: the owner may git/rclone it.

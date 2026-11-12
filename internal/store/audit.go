@@ -20,6 +20,17 @@ type AuditEntry struct {
 // Audit appends one line. Values never go here — only names and shape.
 func (s *Store) Audit(action, agent string, names []string, fields map[string]string) {
 	cwd, _ := os.Getwd()
+	// log the vault key a name resolved to, so `sec logs project:NAME` finds it
+	if CurrentContext() != (Context{}) {
+		canon := make([]string, len(names))
+		for i, n := range names {
+			canon[i] = n
+			if ValidName(n) == nil {
+				canon[i] = s.Key(n)
+			}
+		}
+		names = canon
+	}
 	e := AuditEntry{TS: time.Now().UTC(), Action: action, Names: names, Agent: agent, CWD: cwd, Fields: fields}
 	b, _ := json.Marshal(e)
 	f, err := os.OpenFile(s.AuditPath(), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)

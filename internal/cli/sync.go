@@ -214,7 +214,8 @@ func sealNames(s *store.Store, names []string, key string) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		items = append(items, store.SharedItem{Name: n, Kind: m.Kind, Value: v})
+		// the scoped key travels, so the far vault files it under the same project@env
+		items = append(items, store.SharedItem{Name: m.Name, Kind: m.Kind, Value: v})
 	}
 	return store.Seal(key, items)
 }

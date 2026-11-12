@@ -90,6 +90,21 @@ run next — and a wrong usage prints the closest correct command.
 
 - **Vault**: `~/.config/sec/vault/NAME.age` (age X25519, `filippo.io/age`) + `NAME.json` metadata.
   Ciphertext + names only → commit it to a private repo or `rclone sync` it. Sync is not sec's job.
+- **Projects & environments**: identity is (project, env, NAME), both optional. Address
+  `reqsume:NAME`, `reqsume@production:NAME`, `@dev:NAME` (projects nest with `/`: `reqsume/api`)
+  anywhere a NAME goes, including `{{reqsume@production:DB_PW}}` and
+  `sec run reqsume@production:DB_PW=PGPASSWORD -- …`. Scoped secrets live in
+  `vault/_projects/<project>/@<env>/NAME.{age,json}`; the global namespace stays the flat
+  `vault/NAME.*` every older vault already has, so nothing migrates. Bare names resolve in the
+  current context — `project@env`, then `project`, then global — set by `sec use P [--env E]`
+  (saved in `context.json`), overridden by `SEC_PROJECT`/`SEC_ENV`, overridden by
+  `--project/--env` on any command or a qualified name. Writes (`set`, `gen`, `import`) go to the
+  context: `sec import .env.production --project reqsume --env production`. `sec ls` shows
+  PROJECT/ENV, `sec project ls` counts per project and env. `sync`/`push` to another sec carry
+  the scope (the far end needs this version to accept a scoped name).
+- **`sec get NAME --out FILE`**: for a program/daemon with no TTY — the raw value goes to a new
+  0600 file (O_EXCL: an existing file or symlink is refused), never to stdout; open to agents like
+  `render`, audited as `get.out`.
 - **Identity**: pluggable, the same three backends `Bun.secrets` gives JS, plus a file:
   `SEC_IDENTITY` env (CI/containers) > OS keyring (macOS Keychain / Windows Credential Manager /
   Linux Secret Service, via `go-keyring`) > `identity.txt` (0400).

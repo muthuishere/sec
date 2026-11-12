@@ -109,7 +109,7 @@ func cmdRun(args []string) error {
 	for _, spec := range splitList(rest[0]) {
 		n, v, ok := strings.Cut(spec, "=")
 		if !ok {
-			v = n
+			v = store.BareName(n) // reqsume@production:DB_PW → $DB_PW
 		}
 		env[v] = n
 		names = append(names, n)

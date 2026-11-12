@@ -138,6 +138,7 @@ func runStdin(bin string, args []string, value string) error {
 //	--gcp   project[=SECRET_NAME]
 func Parse(kind, spec, name string) (store.Placement, error) {
 	p := store.Placement{Type: kind}
+	name = store.BareName(name) // a scoped secret lands under its plain NAME
 	switch kind {
 	case "file":
 		path, v, ok := strings.Cut(spec, "=")
