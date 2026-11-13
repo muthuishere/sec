@@ -230,19 +230,26 @@ func cmdImport(args []string) error {
 			return err
 		}
 	}
-	// A plain .env lands in a project named after this repo / folder (or the
-	// --project given), and the folder remembers it: back here later, bare
-	// names resolve there first, no --project or sec use needed.
-	if p := store.CurrentContext().Project; os.Getenv("SEC_PROJECT") == "" && store.FolderProject() == "" {
-		if fp := store.FolderProjectName(store.FolderRoot()); fp != "" && (p == "" || p == store.SavedContext().Project) {
-			os.Setenv("SEC_PROJECT", fp)
+	// A plain .env lands in the project the repo's .sec file names; with no
+	// .sec, in one named after the repo / folder (or --project), and a .sec
+	// is written at the repo root so later runs here resolve there first.
+	if os.Getenv("SEC_PROJECT") == "" && store.FolderProject() == "" {
+		if fp := store.FolderProjectName(store.FolderRoot()); fp != "" {
+			if p := store.CurrentContext().Project; p == "" || p == store.SavedContext().Project {
+				os.Setenv("SEC_PROJECT", fp)
+			}
 		}
 	}
 	if p := store.CurrentContext().Project; p != "" {
-		if err := store.RememberFolder(p); err != nil {
+		wrote, err := store.RememberFolder(p)
+		if err != nil {
 			return err
 		}
-		fmt.Printf("project %s (this folder now resolves there; override with --project NAME)\n", p)
+		if wrote != "" {
+			fmt.Printf("project %s — wrote %s (edit it to rename; commit it, it holds no secret)\n", p, wrote)
+		} else {
+			fmt.Printf("project %s\n", p)
+		}
 	}
 	s, err := open()
 	if err != nil {

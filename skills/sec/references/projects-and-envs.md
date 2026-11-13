@@ -21,11 +21,13 @@ goes — `ls`, `rm`, `tag`, `where`, `logs`, `rotate`, `place`, `push`, `sync`, 
 
 `sec exec -- psql "postgres://app:{{reqsume@production:POSTGRES_PASSWORD}}@db/app"` ·
 `sec run reqsume@production:POSTGRES_PASSWORD=PGPASSWORD -- psql` (no `=VAR` → `$POSTGRES_PASSWORD`).
-**Folder = project by default.** `sec import .env` in a repo (or plain folder) stores the keys in a
-project named after the repo root / folder (`My App` → `my-app`), or the `--project NAME` given, and the
-folder remembers it. Back in that repo — any subfolder — bare names resolve in that project first,
-then global; nothing to pass. `$HOME` and `/` never get a folder project.
+**A repo names its project in `.sec`** (at the repo root, committed — no secrets in it):
+`project = billing` (optional `env = dev`; a bare `billing` line works too). Anywhere in that repo
+bare names resolve in that project first, then global — nothing to pass. `sec import .env` with no
+`.sec` writes one, named after the repo root / folder (`My App` → `my-app`) or the `--project NAME`
+given; edit the file to rename. Read `.sec` (never a secret) before guessing a project.
+`$HOME` and `/` never count as a repo.
 
-Context precedence: qualified name > `--project/--env` > `SEC_PROJECT/SEC_ENV` > the folder's project > `sec use`. Writes
+Context precedence: qualified name > `--project/--env` > `SEC_PROJECT/SEC_ENV` > the repo's `.sec` > `sec use`. Writes
 (set, gen, import) go to the current context. Use projects, not NAME prefixes; tags stay labels.
 sync/push to another sec carry the scope. The vault dir is ciphertext: the owner may git/rclone it.
