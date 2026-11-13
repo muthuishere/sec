@@ -144,9 +144,14 @@ func judgeWrite(path, text string) (string, []string) {
 	if path != "" && policy.IsSecretFile(path) {
 		return "sec: " + path + " holds secrets, and agents do not write it directly. Put a stored secret into it with `sec push NAME " + path + " [--as VAR]`, or generate one with `sec gen --save NAME --env " + path + "=VAR`.", nil
 	}
-	sealed, names := sealText(text)
+	sealed, names, known := sealTextKnown(text)
 	if len(names) == 0 {
 		return "", nil
+	}
+	if !known {
+		return fmt.Sprintf("sec: refused writing %s — %s looks like a literal credential (matched by its key name or shape, not a vault value). "+
+			"Write a reference instead: {{NAME}}, ${NAME}, $NAME, sec:NAME, env:NAME or dotenv:NAME. With placeholders it is:\n\n%s\n\n"+
+			"If a real value must end up in a file, write the template and have `sec render <template> --out <file>` fill it.", path, strings.Join(names, ", "), sealed), names
 	}
 	return fmt.Sprintf("sec: this would write the live value of %s into %s. Write the placeholder instead — the same content with values sealed is:\n\n%s\n\nIf a real value must end up in a file, write the template and have `sec render <template> --out <file>` fill it.", strings.Join(names, ", "), path, sealed), names
 }
@@ -154,6 +159,13 @@ func judgeWrite(path, text string) (string, []string) {
 // sealText replaces known values (vault, dotenv files, credential env vars)
 // and recognisable token shapes with {{NAME}}.
 func sealText(text string) (string, []string) {
+	out, names, _ := sealTextKnown(text)
+	return out, names
+}
+
+// sealTextKnown also reports whether any hit is a real known value (vault,
+// dotenv, env var) rather than a shape/name heuristic.
+func sealTextKnown(text string) (string, []string, bool) {
 	var vault map[string]string
 	if s, err := open(); err == nil {
 		if names, err := s.List(); err == nil {
@@ -163,13 +175,15 @@ func sealText(text string) (string, []string) {
 	cwd, _ := os.Getwd()
 	known := policy.RedactionSet(vault, cwd)
 	b, found := redact.Seal([]byte(text), known)
+	isKnown := len(found) > 0
 	out := string(b)
 	hits := detect.Find(out, known)
 	for _, h := range hits {
 		found = append(found, h.Name)
+		isKnown = isKnown || h.Known
 	}
 	out = detect.Replace(out, hits)
-	return out, uniq(found)
+	return out, uniq(found), isKnown
 }
 
 // sealedSecretFile goes one step further for dotenv files: every assignment's

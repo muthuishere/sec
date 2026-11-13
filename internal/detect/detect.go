@@ -108,8 +108,8 @@ func Find(text string, known map[string]string) []Hit {
 				continue
 			}
 			v := text[s:e]
-			if strings.HasPrefix(v, "{{") || strings.HasPrefix(v, "$") {
-				continue // already a placeholder or a variable reference
+			if IsReference(v) {
+				continue // a placeholder or a reference to a value, never the value
 			}
 			name := p.name
 			if p.kind == "phrase" {
@@ -152,4 +152,14 @@ func Replace(text string, hits []Hit) string {
 	}
 	b.WriteString(text[last:])
 	return b.String()
+}
+
+// refRe: sec:NAME, sec:project@env:NAME, env:NAME, dotenv:NAME, vault:NAME …
+var refRe = regexp.MustCompile(`^(?i:sec|env|dotenv|vault|op|keychain|ssm|secretsmanager)://?[A-Za-z_][A-Za-z0-9_./@:-]*$|^(?i:sec|env|dotenv|vault|op|keychain|ssm|secretsmanager):[A-Za-z_][A-Za-z0-9_./@:-]*$`)
+
+// IsReference: the text names where a value lives instead of holding it —
+// {{NAME}}, ${NAME}, ${sec:NAME}, $NAME, sec:NAME, env:NAME, dotenv:NAME.
+func IsReference(v string) bool {
+	v = strings.TrimRight(v, ",;")
+	return strings.HasPrefix(v, "{{") || strings.HasPrefix(v, "$") || refRe.MatchString(v)
 }
