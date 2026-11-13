@@ -15,7 +15,7 @@ import (
 )
 
 func init() {
-	register("logs", "logs [NAME] [--since 7d] [--action A] [-n 50] [--json] — the audit log, newest last, every field shown", cmdLogs)
+	register("logs", "logs [NAME] [--since 7d] [--action A] [-n 50] [--json] [--retired] — the audit log, newest last, every field shown", cmdLogs)
 	register("keys", "keys [FILE…] — which keys a .env / template / file needs are in the vault and which are missing", cmdKeys)
 }
 
@@ -25,17 +25,22 @@ func cmdLogs(args []string) error {
 	since := fs.String("since", "", "window like 24h, 7d, 30d")
 	n := fs.Int("n", 50, "show the last N entries (0 = all)")
 	asJSON := fs.Bool("json", false, "one JSON object per line")
+	nameFlag := fs.String("name", "", "filter by secret (same as the NAME positional)")
+	retired := fs.Bool("retired", false, "list secrets with retired versions still to revoke upstream")
 	rest, err := parse(fs, args)
 	if err != nil {
 		return err
 	}
-	name := ""
+	name := *nameFlag
 	if len(rest) > 0 {
 		name = rest[0]
 	}
 	s, err := open()
 	if err != nil {
 		return err
+	}
+	if *retired {
+		return listRetired(s, *asJSON)
 	}
 	var from time.Time
 	if *since != "" {

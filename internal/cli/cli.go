@@ -64,6 +64,9 @@ func Main(args []string) int {
 				fmt.Fprintf(os.Stderr, "sec: %s is not allowed: this vault is read-only (SEC_READONLY=1)\n", c.name)
 				return 1
 			}
+			if msg := deprecation(c.name, args[1:]); msg != "" {
+				fmt.Fprintln(os.Stderr, msg) // stderr only: stdout stays clean for --json
+			}
 			rest, err := scopeFlags(c.name, args[1:])
 			if err == nil {
 				err = c.run(rest)

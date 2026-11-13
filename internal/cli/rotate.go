@@ -1,8 +1,8 @@
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -129,7 +129,7 @@ func cmdWhere(args []string) error {
 		for _, r := range m.Retired {
 			fmt.Printf("v%d(%s) ", r.Version, r.RetiredAt.Format("01-02"))
 		}
-		fmt.Println("  → `sec audit --retired`, then `sec rotate NAME --purge` once revoked")
+		fmt.Println("  → `sec logs --retired`, then `sec rotate NAME --purge` once revoked")
 	}
 	ents, _ := s.ReadAudit(m.Name, "", time.Now().Add(-30*24*time.Hour))
 	fmt.Printf("activity in the last 30 days (%d):\n", len(ents))
@@ -261,48 +261,25 @@ func cmdRotate(args []string) error {
 	return nil
 }
 
+// cmdAudit is deprecated (v0.3.0): it is sec logs with every entry shown.
 func cmdAudit(args []string) error {
-	fs := flags("audit")
-	name := fs.String("name", "", "filter by secret")
-	action := fs.String("action", "", "filter by action (exec, run, set, rotate, …)")
-	since := fs.String("since", "", "window like 24h, 7d, 30d")
-	retired := fs.Bool("retired", false, "list secrets with retired versions still to revoke")
-	if _, err := parse(fs, args); err != nil {
-		return err
-	}
-	s, err := open()
-	if err != nil {
-		return err
-	}
-	if *retired {
-		names, _ := s.List()
-		for _, n := range names {
-			m, err := s.MetaExact(n)
-			if err != nil || len(m.Retired) == 0 {
-				continue
-			}
-			fmt.Printf("%-32s %d retired  source=%s\n", n, len(m.Retired), orDash(m.Source))
+	return cmdLogs(append([]string{"-n", "0"}, args...))
+}
+
+// listRetired lists secrets whose old versions still need revoking upstream.
+func listRetired(s *store.Store, asJSON bool) error {
+	names, _ := s.List()
+	for _, n := range names {
+		m, err := s.MetaExact(n)
+		if err != nil || len(m.Retired) == 0 {
+			continue
 		}
-		return nil
-	}
-	var from time.Time
-	if *since != "" {
-		d, err := parseWindow(*since)
-		if err != nil {
-			return err
+		if asJSON {
+			b, _ := json.Marshal(map[string]any{"name": n, "retired": len(m.Retired), "source": m.Source})
+			fmt.Println(string(b))
+			continue
 		}
-		from = time.Now().Add(-d)
-	}
-	ents, err := s.ReadAudit(*name, *action, from)
-	if err != nil {
-		return err
-	}
-	for _, e := range ents {
-		detail := e.Fields["cmd"] + e.Fields["file"] + e.Fields["template"]
-		fmt.Printf("%s  %-14s %-12s %-40s %s\n", e.TS.Local().Format("2006-01-02 15:04"), e.Action, e.Agent, strings.Join(e.Names, ","), detail)
-	}
-	if len(ents) == 0 {
-		fmt.Fprintln(os.Stderr, "(no matching audit entries)")
+		fmt.Printf("%-32s %d retired  source=%s\n", n, len(m.Retired), orDash(m.Source))
 	}
 	return nil
 }

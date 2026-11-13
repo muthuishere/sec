@@ -12,4 +12,4 @@ Trust and who-may-run-what: [permissions.md](permissions.md). Walkthroughs: [sce
 | check before sending | `sec sync A,B WHERE --dry` (names + remote key fingerprint, sends nothing) |
 | a program there reads a file / .env / folder | `sec push NAME WHERE` (`./app/.env`, `ssh://h/etc/app/certs`, `docker://c/run/secrets`) |
 | no connection at all | owner: `sec export --only A,B --for <their sec id> --out x.sec`; there: `sec import x.sec` |
-| GitHub / GCP secret | `sec place NAME --gh owner/repo[:env]` · `--gcp project` |
+| GitHub / GCP secret | `sec push NAME gh://owner/repo[:env]` · `sec push NAME gcp://project` |

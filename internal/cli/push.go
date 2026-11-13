@@ -15,7 +15,7 @@ import (
 )
 
 func init() {
-	register("push", "push NAME[,NAME] WHERE — put secrets where programs read them: ./file, .env, ./folder, ssh://host/path, docker://ctr/path, or a saved target", cmdPush)
+	register("push", "push NAME[,NAME] WHERE — put secrets where programs read them: ./file, .env, ./folder, ssh://host/path, docker://ctr/path, gh://owner/repo[:env], gcp://project, or a saved target", cmdPush)
 	register("target", "target add NAME URL|age1… | ls | rm NAME — save push destinations (ssh://, docker://, k8s://, a path) or another sec's key for export --for", cmdTarget)
 }
 
@@ -28,6 +28,8 @@ WHERE is where a program will read it:
   ssh://host                     into that server's own sec vault
   docker://myapp/run/secrets     inside a running container
   k8s://pod-name/etc/secret      inside a pod (kubectl exec)
+  gh://owner/repo[:env]          a GitHub Actions secret (repo or environment level, via gh)
+  gcp://project                  a GCP Secret Manager secret (via gcloud)
   hetzner                        a saved target (sec target add hetzner ssh://hetzner)
 
 sec remembers every destination: sec rotate / sec set --place update them all.
@@ -127,11 +129,18 @@ func cmdPush(args []string) error {
 
 // destination is a parsed WHERE: a transport (empty = this machine) and a path.
 type destination struct {
-	via  []string
-	path string
+	via   []string
+	path  string
+	cloud string // "gh" or "gcp": a managed secret store, spec in path
 }
 
 func (d destination) placement(kind, target, mode, remoteSec string, count int) (store.Placement, error) {
+	if d.cloud != "" {
+		if kind == bundle.KindFile || kind == bundle.KindDir {
+			return store.Placement{}, fmt.Errorf("%s is a %s — %s:// takes a value, not a file/folder", target, kind, d.cloud)
+		}
+		return place.Parse(d.cloud, d.path+"="+target, target)
+	}
 	if len(d.via) > 0 {
 		if d.path != "" && count > 1 && !isDotenv(d.path) {
 			return store.Placement{}, fmt.Errorf("a file/folder path takes one secret; push them one at a time")
@@ -167,6 +176,30 @@ func isDotenv(p string) bool {
 func resolveWhere(s *store.Store, where string) (destination, error) {
 	if t, ok := loadTargets(s)[where]; ok {
 		where = t
+	}
+	return parseWhere(where)
+}
+
+// parseWhere is resolveWhere without saved targets (no vault needed).
+func parseWhere(where string) (destination, error) {
+	for _, c := range []string{"gh", "gcp"} {
+		spec, ok := strings.CutPrefix(where, c+"://")
+		if !ok {
+			continue
+		}
+		spec = strings.Trim(spec, "/")
+		if spec == "" || strings.Contains(spec, "=") {
+			return destination{}, fmt.Errorf("%s: want gh://owner/repo[:env] or gcp://project (rename with --as)", where)
+		}
+		if c == "gh" {
+			repo, _, _ := strings.Cut(spec, ":")
+			if strings.Count(repo, "/") != 1 || strings.HasPrefix(repo, "/") || strings.HasSuffix(repo, "/") {
+				return destination{}, fmt.Errorf("%s: want gh://owner/repo[:env]", where)
+			}
+		} else if strings.ContainsAny(spec, "/:") {
+			return destination{}, fmt.Errorf("%s: want gcp://project", where)
+		}
+		return destination{cloud: c, path: spec}, nil
 	}
 	if !strings.Contains(where, "://") {
 		return destination{path: where}, nil

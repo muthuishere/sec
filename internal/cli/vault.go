@@ -176,6 +176,18 @@ func getToFile(name, out string) error {
 	if err != nil {
 		return err
 	}
+	if m, err := s.Meta(name); err == nil && m.Kind == bundle.KindDir {
+		// a stored folder is extracted (what sec file get -o did), still only to a new path
+		if _, err := os.Lstat(out); err == nil {
+			return fmt.Errorf("%s already exists — sec get --out writes only a new path (remove it first)", out)
+		}
+		if err := bundle.Write(out, m.Kind, v, 0); err != nil {
+			return err
+		}
+		s.Audit("get.out", owner.Agent(), []string{name}, map[string]string{"out": out})
+		fmt.Fprintf(os.Stderr, "✓ %s → %s/ (folder)\n", s.Key(name), out)
+		return nil
+	}
 	f, err := os.OpenFile(out, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
 	if err != nil {
 		if os.IsExist(err) {

@@ -37,7 +37,7 @@ sec run STRIPE_KEY,DB_URL=DATABASE_URL -- go test ./...          # as env vars
 5. **Missing a value?** Don't fetch it (no browser, clipboard, dashboard). Tell the owner:
    `sec set NAME --source <url> --place`.
 6. Never `scp` / `docker cp` / `kubectl cp` / `gh secret set` / `gcloud secrets` a secret by hand —
-   `sec sync`, `sec push`, `sec place` keep the vault authoritative and rotation reaching the copy.
+   `sec sync` and `sec push` (incl. `gh://owner/repo[:env]`, `gcp://project`) keep the vault authoritative and rotation reaching the copy.
 7. A value transited chat → say so and recommend `sec rotate NAME`.
 8. Report names, never values — not even a fragment.
 9. Owner-only commands (`get --print`, `export`, first contact, `remote install`, `identity …`):

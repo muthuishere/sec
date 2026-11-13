@@ -15,7 +15,7 @@ import (
 
 func init() {
 	register("gen", "generate a password/token straight into the vault and/or a .env — never shown", cmdGen)
-	register("env", "env write FILE NAME[=VAR]… | env ls FILE — dotenv files without reading them", cmdEnv)
+	register("env", "env list | env ls FILE — which dotenv files exist and their keys, without reading values", cmdEnv)
 	register("import", "import a .env (every KEY=value; file becomes a placement) or a sealed export from another sec", cmdImport)
 	register("export", "owner-only: seal secrets for another sec (--for KEY), or write a plaintext .env (--confirm)", cmdExport)
 }

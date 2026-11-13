@@ -51,17 +51,17 @@
         <a href="#project">projects &amp; envs</a></div>
       <div class="toc-group"><b><a href="#use">4 · Use</a></b>
         <a href="#exec">exec</a> <a href="#run">run</a> <a href="#render">render</a>
-        <a href="#env">env</a> <a href="#sh">sh</a> <a href="#seal">seal</a> <a href="#get">get</a></div>
+        <a href="#env">env</a> <a href="#seal">seal</a> <a href="#get">get</a></div>
       <div class="toc-group"><b><a href="#store">5 · Store</a></b>
-        <a href="#set">set</a> <a href="#gen">gen</a> <a href="#file">file</a> <a href="#tag">tag</a>
+        <a href="#set">set</a> <a href="#gen">gen</a>
         <a href="#import">import</a> <a href="#ls">ls · rm</a> <a href="#use-cmd">use · project</a></div>
       <div class="toc-group"><b><a href="#move">6 · Move</a></b>
         <a href="#move-table">which verb?</a> <a href="#sync">sync</a> <a href="#routes">routes &amp; + chains</a>
         <a href="#push">push</a> <a href="#target">target</a> <a href="#remote">remote</a>
-        <a href="#export">export</a> <a href="#id">id</a> <a href="#recipients">recipients</a></div>
+        <a href="#export">export</a> <a href="#id">id</a></div>
       <div class="toc-group"><b><a href="#audit-rotate">7 · Audit &amp; rotate</a></b>
-        <a href="#where">where</a> <a href="#logs">logs</a> <a href="#audit">audit</a>
-        <a href="#keys">keys</a> <a href="#ok">ok</a> <a href="#place">place</a> <a href="#rotate">rotate</a></div>
+        <a href="#where">where</a> <a href="#logs">logs</a>
+        <a href="#keys">keys</a> <a href="#ok">ok</a> <a href="#rotate">rotate</a></div>
       <div class="toc-group"><b><a href="#agents">8 · Agents</a></b>
         <a href="#skill">skill</a> <a href="#deny">deny rules</a> <a href="#agent">agent</a>
         <a href="#hook">hook</a> <a href="#sh-agents">sh</a></div>
@@ -69,7 +69,7 @@
       <div class="toc-group"><b><a href="#go">10 · Go package</a></b></div>
       <div class="toc-group"><b><a href="#owner-only">11 · Owner-only matrix</a></b></div>
       <div class="toc-group"><b><a href="#threat">12 · Threat model</a></b>
-        <a href="#identity">identity</a> <a href="#cert">cert</a></div>
+        <a href="#identity">identity</a></div>
     </div>
 
     <!-- 1 -->
@@ -164,7 +164,7 @@ sec init --backend file          # servers, containers, CI</pre>
         <code>\r</code> and <code>\n</code> removed, so a value wrapped across lines (<code>xxd -p</code>,
         GNU <code>base64</code>, <code>fold</code>) is still caught. The tail is held back briefly so a
         match cannot slip through the seam; output can lag a few hundred bytes behind.</li>
-      <li id="ledger"><b>Placement ledger</b> — <code>env write</code>, <code>render</code>,
+      <li id="ledger"><b>Placement ledger</b> — <code>push</code>, <code>render</code>,
         <code>import</code>, <code>gen --env</code>, <code>push</code> and <code>place</code> record where a
         value went; <code>rotate</code>, <code>set --place</code> and <code>ok</code> replay them.</li>
       <li><b>Audit</b> — <code>~/.config/sec/audit.ndjson</code>: action, names, agent, cwd, template.
@@ -222,17 +222,9 @@ sec render conf.tmpl --out conf.yaml
 ✓ rendered conf.tmpl → conf.yaml (0600; 2 secret(s), placement recorded)</pre>
 
     <h3 id="env">sec env</h3>
-    <p>Dotenv files without reading them.</p>
-<pre class="block">sec env write TARGET NAME[=VAR]…    # add/replace keys, 0600, recorded as a placement
-sec env ls TARGET                   # the keys in a dotenv (names only)
-sec env list
-
-sec env write .env DB_PW=DATABASE_PASSWORD</pre>
-
-    <h3 id="sh">sec sh</h3>
-    <p>A shell for agents: secret-file reads are refused, <code>{{NAME}}</code> is filled, all output
-    redacted. See <a href="#sh-agents">Agents</a>.</p>
-<pre class="block">sec sh -c 'psql "postgres://app:{{DB_PW}}@db/app" -c "select 1"'</pre>
+    <p>Dotenv files without reading them. To write a value into one: <a href="#push"><code>sec push NAME .env [--as VAR]</code></a>.</p>
+<pre class="block">sec env ls TARGET                   # the keys in a dotenv (names only)
+sec env list</pre>
 
     <h3 id="seal">sec seal</h3>
     <p>The reverse of render: puts <code>{{NAME}}</code> back where a file holds real values. Commit the
@@ -287,21 +279,6 @@ sec set TLS --from ./certs
 
 sec gen --save DB_PW --env .env=DB_PASSWORD
 sec gen --save SESSION_KEY --hex --len 32</pre>
-
-    <h3 id="file">sec file</h3>
-    <p>Whole files and folders (service-account JSON, cert folders) are secrets too.</p>
-<pre class="block">sec file add PATH [NAME] [--tag a,b]   # NAME defaults from the file name
-sec file get NAME [-o PATH]            # stdout as-is (folder = tar.gz), or write with -o
-sec file ls [--tag T]
-
-sec file add ~/Downloads/sa.json       # -> SA_JSON
-sec file get TLS_CERTS -o ./certs</pre>
-
-    <h3 id="tag">sec tag</h3>
-<pre class="block">sec tag NAME a,b[,c]          # replace the tags
-sec tag NAME c --add          # add tags
-
-sec tag SA_JSON reqsume,firebase</pre>
 
     <h3 id="import">sec import</h3>
     <p>Import every <code>KEY=value</code> of a dotenv. The file itself becomes a placement, so a later
@@ -393,6 +370,8 @@ WHERE
   ssh://web+docker://api/path    same + chains as sync; the path is on the last hop
   docker://ctr/path              inside a running container   (also podman://)
   k8s://pod/path                 inside a pod, via kubectl exec
+  gh://owner/repo[:env]          a GitHub Actions secret, repo or environment level (via gh)
+  gcp://project                  a GCP Secret Manager secret (via gcloud)
   prod                           a saved <a href="#target">target</a>
 
   --as NEW          name / variable on the other end (one secret only)
@@ -401,6 +380,8 @@ WHERE
   --remote-sec P    sec binary on the other end (non-login ssh may need ~/.local/bin/sec)
 
 sec push DB_PW,API_KEY ./app/.env
+sec push DB_PW .env.production --as DATABASE_PASSWORD
+sec push GH_TOKEN gh://muthu/app:prod
 sec push TLS ssh://deploy@hetzner/etc/myapp/certs
 sec push DB_PW docker://api/run/secrets/db_pw
 sec push TLS --path /etc/x -- kubectl exec -i pod/api --     # escape hatch</pre>
@@ -452,12 +433,6 @@ there:  sec import x.sec</pre>
     <p>Print this vault's public key (<code>age1…</code>) — what a sender passes to
     <code>sec export --for</code> or <code>sec target add NAME &lt;key&gt;</code>.</p>
 
-    <h3 id="recipients">sec recipients</h3>
-    <p>List or add age public keys that can decrypt the <b>whole</b> vault. To send only some secrets,
-    use sync.</p>
-<pre class="block">sec recipients
-sec recipients --add age1…       # re-encrypts every secret</pre>
-
     <!-- 7 -->
     <h2 id="audit-rotate">7 · Audit &amp; rotate</h2>
 
@@ -467,14 +442,11 @@ sec recipients --add age1…       # re-encrypts every secret</pre>
 
     <h3 id="logs">sec logs</h3>
     <p>The audit log, newest last, every field shown; failures marked <code>✗</code>.</p>
-<pre class="block">sec logs [NAME] [--since 7d] [--action A] [-n 50] [--json]
+<pre class="block">sec logs [NAME | --name NAME] [--since 7d] [--action A] [-n 50] [--json]
+sec logs --retired     # old versions still to revoke upstream
 
 sec logs DB_PW --since 7d
 sec logs --action sync.push</pre>
-
-    <h3 id="audit">sec audit</h3>
-<pre class="block">sec audit [--name N] [--action A] [--since 7d] [--retired]
-sec audit --retired     # old versions still to revoke upstream</pre>
 
     <h3 id="keys">sec keys</h3>
     <p>Which keys a project needs are in the vault, and which are missing. With no arguments it reads
@@ -503,18 +475,6 @@ sec audit --retired     # old versions still to revoke upstream</pre>
       <li><b>Reports:</b> missing keys, replaced versions older than 7 days still to revoke, whether the
         agent hook is installed. Exit 1 when something needs you.</li>
     </ul>
-
-    <h3 id="place">sec place</h3>
-    <p>Record where a secret lives — and push the value there now.</p>
-<pre class="block">  --file PATH[=VAR]                          dotenv placement
-  --gh owner/repo[:environment][=SECRET]     GitHub Actions secret
-  --gcp project[=SECRET_NAME]                GCP Secret Manager
-  --render TEMPLATE=OUT                      rendered file
-  --path PATH[:MODE]                         write the value / file / folder whole at PATH
-  --record-only                              record without pushing now
-
-sec place GH_TOKEN --gh muthu/app:prod
-sec place DB_PW --render db.tmpl=db.conf</pre>
 
     <h3 id="rotate">sec rotate</h3>
     <p>New value → re-pushed to every recorded placement → the steps it cannot do are printed.</p>
@@ -562,7 +522,7 @@ Bash(sec export:*)         # the bulk print path</pre>
     <h3 id="agent">sec agent</h3>
     <p>Run an agent with the human's keyboard going through sec first: every paste and Enter is checked
     for secrets; one found is stored in the vault and the agent gets <code>{{NAME}}</code>. The agent's
-    shell becomes <code>sec sh</code>, and for <code>claude</code> the <a href="#hook">hook</a> is wired in
+    shell becomes <code>sec sh</code> (the agent-shell mode of <code>exec</code>), and for <code>claude</code> the <a href="#hook">hook</a> is wired in
     for the session. Arguments after the agent name pass through untouched. Without a working vault it
     will not start.</p>
 <pre class="block">sec agent AGENT [agent args…]
@@ -584,7 +544,7 @@ sec agent codex</pre>
     <!-- 9 -->
     <h2 id="readonly">9 · CI / read-only vaults</h2>
     <p>With <code>SEC_READONLY=1</code> a vault can be used but never changed: only <code>ls run exec
-    render seal keys where logs audit env id use project</code> run; every other command is refused,
+    render seal keys where logs env id use project</code> run; every other command is refused,
     including writes through the Go package, and the skill auto-install/refresh is skipped. Use
     <code>sec init --backend file</code> on a CI runner.</p>
 <pre class="block">SEC_READONLY=1 sec run DB_URL,API_TOKEN -- npm run e2e</pre>
@@ -634,13 +594,6 @@ sec identity adopt KEY_FILE</pre>
     <p>What the keyring buys you: no plaintext key on disk, so a disk image, a backup or an
     <code>rclone</code> of the wrong directory doesn't carry it. What it does <b>not</b> buy you: it cannot
     stop a process running as you from asking the keyring — identical exposure to a 0600 file.</p>
-
-    <h3 id="cert">sec cert</h3>
-    <p>Local TLS with private keys written 0600 — a dev certificate is a credential, and it usually ends
-    up world-readable in <code>/tmp</code>.</p>
-<pre class="block">sec cert ca [--trust]
-sec cert issue --cn HOST [--san a,b] [--out DIR]
-sec cert self-signed --cn HOST</pre>
 
   </div>
 </section>

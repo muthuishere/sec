@@ -192,7 +192,7 @@ vault        <span class="ok">STRIPE_KEY.age (ciphertext)</span></pre>
       <div class="verb"><b>sec agent</b><span><code>sec agent claude</code> (or codex, devin, …) runs the agent with
         <em>every paste and Enter checked for secrets</em> before the agent sees it, its shell set to
         <code>sec sh</code>, and — for Claude — <code>sec hook</code> wired in for that session.</span></div>
-      <div class="verb"><b>sec sh</b><span>A shell for agents: <em>refuses reads of secret files</em>, fills
+      <div class="verb"><b>sec sh</b><span>The agent-shell mode of <code>sec exec</code>, set by <code>sec agent</code>: <em>refuses reads of secret files</em>, fills
         <code>{{NAME}}</code>, and redacts all output — so even a plain <code>cat .env</code> comes back empty-handed.</span></div>
       <div class="verb"><b>sec hook</b><span>A Claude Code <em>PreToolUse guard</em> on Bash, Read, Write, Edit,
         Grep, Glob and notebooks: a file that holds vault values is denied before the tool runs, and the
@@ -289,7 +289,7 @@ db:
   <div class="wrap">
     <div class="sec-kicker">the compromise-day question</div>
     <h2 class="sec">"Where did this key end up?" should be one command, not an afternoon.</h2>
-    <p class="sec-sub">Every write — <code>env write</code>, <code>render</code>, <code>import</code>,
+    <p class="sec-sub">Every write — <code>push</code>, <code>render</code>, <code>import</code>,
     <code>gen --env</code>, <code>place</code> — records a placement. Rotation replays the ledger
     instead of asking you to remember it, and prints the steps a tool honestly cannot do for you.</p>
     <div class="term">
@@ -310,7 +310,7 @@ APP_DB_PW  v2  updated 2026-09-19 13:38
 placements (2):
   file   .env.dev  (DB_PASSWORD)   [2026-09-19]
   render conf.yaml  &lt;- conf.tmpl   [2026-09-19]
-retired versions still to revoke upstream: v1(09-19)   → `sec audit --retired`, then `sec rotate NAME --purge` once revoked
+retired versions still to revoke upstream: v1(09-19)   → `sec logs --retired`, then `sec rotate NAME --purge` once revoked
 activity in the last 30 days (3):
   09-19 19:08  rotate    claude-code
   09-19 19:08  render    claude-code
@@ -398,12 +398,12 @@ activity in the last 30 days (3):
       <div class="verb"><b>sec ok</b><span><em>Check everything</em>; re-push stale copies, list what needs you.</span></div>
       <div class="verb"><b>sec rotate</b><span>New value → <em>re-pushed to every placement</em> → manual steps listed honestly.</span></div>
     </div>
-    <p class="cap">The rest — <code>init · ls · get · rm · tag · use · project · file · import · env ·
-    render · seal · sh · agent · export · id · sync · remote · target · audit · logs · keys · place ·
-    cert · hook · identity · recipients · skill</code> — are in the <a href="docs.html">docs</a>, and
+    <p class="cap">The rest — <code>init · ls · get · rm · use · project · import · env ·
+    render · seal · agent · export · id · sync · remote · target · logs · keys ·
+    hook · identity · skill</code> — are in the <a href="docs.html">docs</a>, and
     <code>sec help &lt;command&gt;</code> prints the syntax with examples.
-    <code>sec cert</code> also does local TLS (CA, issue, self-signed) with keys written 0600, because
-    a dev cert is a credential that usually ends up world-readable in <code>/tmp</code>.</p>
+    Local TLS: make the certs with <code>mkcert</code>, then <code>sec set TLS --from ./certs</code> keeps
+    the keys in the vault instead of world-readable in <code>/tmp</code>.</p>
   </div>
 </section>
 

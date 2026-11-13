@@ -74,7 +74,7 @@ sec exec -- curl -sS https://api.x.com -H "Authorization: Bearer {{STRIPE_KEY}}"
 <pre class="block">sec env list                                    # re-scans: environment → file → key count
 sec import .env.production --project reqsume --env production   # owner has a real file
 sec render .env.template --out .env             # write it from the vault…
-sec env write .env DB_PW=DATABASE_PASSWORD      # …or key by key
+sec push DB_PW .env --as DATABASE_PASSWORD      # …or key by key
 sec keys                                        # exit 1 lists keys the project still lacks</pre>
     <p>Ask which environment if it is unclear; never reuse an old path.</p>
 
@@ -95,7 +95,7 @@ sec gen --save SESSION_KEY --hex --len 32</pre>
     <p>Audited. For a whole config use <code>sec render</code>.</p>
 
     <h2 id="certs">A certs folder onto a server</h2>
-<pre class="block">sec file add ./certs TLS                        # or: sec file add ./sa.json  → SA_JSON
+<pre class="block">sec set TLS --from ./certs                      # or: sec set SA_JSON --from ./sa.json
 sec push SA_JSON ./app/sa.json                  # locally, where the program reads it
 sec push TLS ssh://web/etc/app/certs            # on a server
 sec push TLS ssh://web+docker://api/run/certs   # inside a container on that server
@@ -122,13 +122,13 @@ sec import x.sec                                # there</pre>
 
     <h2 id="ci">CI or e2e with a read-only vault</h2>
 <pre class="block">SEC_READONLY=1 sec run DB_PW -- ./e2e.sh</pre>
-    <p>Only <code>ls run exec render seal keys where logs audit env id use project</code> work. Anything else is refused — report it; do not look for a way around.</p>
+    <p>Only <code>ls run exec render seal keys where logs env id use project</code> work. Anything else is refused — report it; do not look for a way around.</p>
 
     <h2 id="leak">A key leaked</h2>
 <pre class="block">sec where NAME                                  # where it lives
-sec audit --name NAME --since 7d                # who used it
+sec logs NAME --since 7d                        # who used it
 sec rotate NAME --gen --hook ./alter-user.sh    # or owner pastes the new one: sec rotate NAME
-sec audit --retired                             # old versions still to revoke at the provider</pre>
+sec logs --retired                              # old versions still to revoke at the provider</pre>
     <p>Then <code>sec rotate NAME --purge</code> once revoked upstream.</p>
 
     <h2 id="ok">Is everything in sync / healthy</h2>
@@ -145,8 +145,8 @@ sec exec -- psql "{{reqsume@production:DB_URL}}"   # or inline, per value</pre>
     <p>Or per command <code>--project P --env E</code>.</p>
 
     <h2 id="gh">A GitHub or GCP secret</h2>
-<pre class="block">sec place NAME --gh owner/repo[:env]
-sec place NAME --gcp my-project</pre>
+<pre class="block">sec push NAME gh://owner/repo[:env]
+sec push NAME gcp://my-project</pre>
     <p>Never <code>gh secret set</code> by hand; the placement is recorded so rotate re-pushes it.</p>
 
     <h2 id="windows">Windows</h2>

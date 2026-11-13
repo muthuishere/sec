@@ -13,7 +13,7 @@ Worked flows, step by step. Syntax is in [commands.md](commands.md); anything ma
 ## 3. Set up a repo's `.env`
 1. `sec env list` (re-scans; never reuse an old path), ask which environment if unclear.
 2. Owner has a real file: `sec import .env.production --project reqsume --env production`.
-3. Write the file from the vault: `sec render .env.template --out .env` or `sec env write FILE NAME[=VAR]…`.
+3. Write the file from the vault: `sec render .env.template --out .env` or `sec push NAME[,NAME] FILE [--as VAR]`.
 4. `sec keys` — exit 1 lists keys the project still lacks.
 
 ## 4. The user pasted a secret in chat
@@ -27,7 +27,7 @@ Worked flows, step by step. Syntax is in [commands.md](commands.md); anything ma
 `sec get NAME --out /path/file` — new 0600 file, refuses an existing file or symlink, audited. For a whole config use `sec render`.
 
 ## 7. Store and place a service-account JSON or cert folder
-1. `sec file add ./sa.json` (→ `SA_JSON`) or `sec file add ./certs TLS`.
+1. `sec set SA_JSON --from ./sa.json` or `sec set TLS --from ./certs`.
 2. Put it where the program reads it: `sec push SA_JSON ./app/sa.json`, or on a server `sec push TLS ssh://web/etc/app/certs` (first push to another machine is **owner**).
 3. `sec where TLS` lists every place; `sec rotate` and `sec ok` keep them current.
 
@@ -44,9 +44,9 @@ Owner: `sec export --only A,B --for <their sec id> --out x.sec` (their id: `sec 
 Only `ls run exec render seal keys where logs audit env id use project` work. If something else is refused, report it; do not look for a way around.
 
 ## 11. A key leaked
-1. `sec where NAME` and `sec audit --name NAME --since 7d` — where it lives and who used it.
+1. `sec where NAME` and `sec logs NAME --since 7d` — where it lives and who used it.
 2. `sec rotate NAME --gen [--hook s.sh]`, or the owner pastes the new value: `sec rotate NAME`.
-3. `sec audit --retired` lists old versions still to revoke at the provider.
+3. `sec logs --retired` lists old versions still to revoke at the provider.
 
 ## 12. Is everything in sync / healthy
 `sec ok --dry` reports; `sec ok` re-pushes stale copies only and lists missing keys and old versions with the command to run.
@@ -58,4 +58,4 @@ Only `ls run exec render seal keys where logs audit env id use project` work. If
 `sec use reqsume --env dev` (show: `sec use`, clear: `sec use --unset`), or per command `--project P --env E`, or `{{reqsume@production:NAME}}` inline.
 
 ## 15. A GitHub or GCP secret
-`sec place NAME --gh owner/repo[:env]` or `--gcp project` — never `gh secret set` by hand.
+`sec push NAME gh://owner/repo[:env]` or `sec push NAME gcp://project` — never `gh secret set` by hand.

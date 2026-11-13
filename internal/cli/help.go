@@ -62,7 +62,7 @@ var docs = map[string]helpDoc{
 		examples: []string{"sec import .env              # project from .sec.toml; none? writes one named after the repo", "sec import .env --project billing --env dev   # custom name and env (written to .sec.toml if missing)", "sec import .env.production --project reqsume --env production", "sec import production --only DB_PW,API_KEY", "sec import x.sec"},
 		next:     "sec ls  ·  sec keys .env"},
 	"recipients": {group: "setup",
-		syntax:   []string{"sec recipients [--add age1…]"},
+		syntax:   []string{"sec recipients [--add age1…]   deprecated: sec sync NAMES WHERE / sec export --for KEY"},
 		examples: []string{"sec recipients", "sec recipients --add age1…   # another machine can open the whole vault"},
 		next:     "to send only some secrets: sec sync NAMES WHERE"},
 	"identity": {group: "setup",
@@ -89,13 +89,13 @@ var docs = map[string]helpDoc{
 		examples: []string{"sec seal notes.md --check", "sec seal config.yaml"},
 		next:     "commit the sealed file; sec render puts the values back"},
 	"env": {group: "use",
-		syntax:   []string{"sec env list", "sec env ls TARGET", "sec env write TARGET NAME[=VAR]…"},
-		examples: []string{"sec env ls .env", "sec env write .env DB_PW=DATABASE_PASSWORD"},
-		next:     "sec keys .env — what is missing"},
+		syntax:   []string{"sec env list", "sec env ls TARGET", "sec env write TARGET NAME[=VAR]…   deprecated: sec push NAME TARGET [--as VAR]"},
+		examples: []string{"sec env ls .env", "sec env list"},
+		next:     "sec keys .env — what is missing  ·  sec push NAME .env — write a value into it"},
 	"sh": {group: "use",
-		syntax:   []string{"sec sh [shell args]"},
+		syntax:   []string{"sec sh [shell args]      the agent-shell mode of sec exec (sec agent sets it as the agent's shell)"},
 		examples: []string{"sec sh -c 'psql \"postgres://app:{{DB_PW}}@db/app\" -c \"select 1\"'"},
-		next:     "secret-file reads are refused, output redacted"},
+		next:     "secret-file reads are refused, output redacted; for your own commands use sec exec -- CMD"},
 	"agent": {group: "use",
 		syntax:   []string{"sec agent AGENT [agent args…]"},
 		examples: []string{"sec agent claude", "sec agent codex"},
@@ -120,8 +120,8 @@ var docs = map[string]helpDoc{
 			"see the names, and type the remote fingerprint back; secrets that exist only there need --force. Agents can never purge.",
 		next: "upgrade keeps sec.prev and rolls back if the new sec fails or the vault's name count changes"},
 	"push": {group: "move",
-		syntax:   []string{"sec push NAME[,NAME] WHERE [--as NEW] [--mode 0600] [--once]", "sec push NAME -- CMD-ON-THE-OTHER-END [--path P]"},
-		examples: []string{"sec push DB_PW .env", "sec push TLS ssh://web/etc/app/certs", "sec push DB_PW docker://api/run/secrets/db_pw"},
+		syntax:   []string{"sec push NAME[,NAME] WHERE [--as NEW] [--mode 0600] [--once]", "sec push NAME -- CMD-ON-THE-OTHER-END [--path P]", "WHERE: .env · ./path · ssh://host/path · docker://ctr/path · k8s://pod/path · gh://owner/repo[:env] · gcp://project · a saved target"},
+		examples: []string{"sec push DB_PW .env", "sec push DB_PW .env.production --as DATABASE_PASSWORD", "sec push TLS ssh://web/etc/app/certs", "sec push DB_PW docker://api/run/secrets/db_pw", "sec push GH_TOKEN gh://muthu/app:prod", "sec push DB_PW gcp://my-project"},
 		owner:    "a first push to another machine is owner-only; re-pushes to recorded places (rotate, set --place, ok) are not.",
 		next:     "sec where NAME lists every place; sec rotate updates them all"},
 	"target": {group: "move",
@@ -143,11 +143,11 @@ var docs = map[string]helpDoc{
 		examples: []string{"sec where DB_PW"},
 		next:     "sec rotate NAME"},
 	"logs": {group: "audit",
-		syntax:   []string{"sec logs [NAME] [--since 7d] [--action A] [-n 50] [--json]"},
-		examples: []string{"sec logs DB_PW --since 7d", "sec logs --action sync.push"},
+		syntax:   []string{"sec logs [NAME | --name NAME] [--since 7d] [--action A] [-n 50] [--json]", "sec logs --retired [--json]      secrets with old versions still to revoke upstream"},
+		examples: []string{"sec logs DB_PW --since 7d", "sec logs --action sync.push", "sec logs --retired"},
 		next:     "sec where NAME"},
 	"audit": {group: "audit",
-		syntax:   []string{"sec audit [--name N] [--action A] [--since 7d] [--retired]"},
+		syntax:   []string{"sec audit [--name N] [--action A] [--since 7d] [--retired]   deprecated: sec logs takes the same flags"},
 		examples: []string{"sec audit --retired"},
 		next:     "revoke retired versions upstream, then sec rotate NAME --purge"},
 	"keys": {group: "audit",
@@ -160,16 +160,16 @@ var docs = map[string]helpDoc{
 		next:     "run the commands it lists"},
 
 	"place": {group: "rotate",
-		syntax:   []string{"sec place NAME --file .env[=VAR] | --gh o/r[:env] | --gcp project | --render T=OUT | --path P[:MODE] [--record-only]"},
+		syntax:   []string{"sec place NAME --file .env[=VAR] | --gh o/r[:env] | --gcp project | --render T=OUT | --path P[:MODE] [--record-only]", "deprecated: sec push NAME .env | gh://o/r[:env] | gcp://project | PATH [--as VAR]"},
 		examples: []string{"sec place GH_TOKEN --gh muthu/app:prod", "sec place DB_PW --render db.tmpl=db.conf"},
-		next:     "sec where NAME"},
+		next:     "use sec push instead  ·  sec where NAME"},
 	"rotate": {group: "rotate",
 		syntax:   []string{"sec rotate NAME [--gen | < new value] [--hook SCRIPT]", "sec rotate NAME --undo | --purge"},
 		examples: []string{"sec rotate DB_PW --gen --hook ./alter-user.sh", "sec rotate API_KEY   # paste the new one", "sec rotate API_KEY --purge"},
 		next:     "revoke the old value upstream (rotate prints where)"},
 
 	"cert": {group: "setup",
-		syntax:   []string{"sec cert ca [--trust]", "sec cert issue --cn HOST [--san a,b] [--out DIR]", "sec cert self-signed --cn HOST"},
+		syntax:   []string{"deprecated (removed in v0.4.0): use mkcert, then sec set NAME --from ./certs", "sec cert ca [--trust]", "sec cert issue --cn HOST [--san a,b] [--out DIR]", "sec cert self-signed --cn HOST"},
 		examples: []string{"sec cert ca", "sec cert issue --cn api.local --san 127.0.0.1"},
 		next:     "sec set TLS --from ./certs  ·  sec push TLS WHERE"},
 	"skill": {group: "setup",
@@ -194,6 +194,8 @@ const moveGuide = `sec help move — getting secrets onto another machine
       sec push TLS ssh://web/etc/app/certs           recorded: sec rotate re-pushes it
       sec push TLS ssh://web+docker://api/run/certs  same hops; the path is on the last one
       sec push DB_PW docker://api/run/secrets/db_pw
+      sec push GH_TOKEN gh://owner/repo:prod         a GitHub Actions secret (via gh)
+      sec push DB_PW gcp://my-project                GCP Secret Manager (via gcloud)
 
   No connection at all (air gap, email, USB)  →  sec export --for + sec import
       there:  sec id                                 → age1…
@@ -281,6 +283,9 @@ Usage: sec <command> [flags]      sec help <command>  ·  sec <command> --help`)
 		sort.Slice(cs, func(i, j int) bool { return cs[i].name < cs[j].name })
 		fmt.Printf("\n%s\n", g.title)
 		for _, c := range cs {
+			if hidden[c.name] {
+				continue // deprecated / internal: still runs, sec help CMD still works
+			}
 			fmt.Printf("  %-11s %s\n", c.name, c.summary)
 		}
 	}

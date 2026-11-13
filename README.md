@@ -11,7 +11,8 @@ sec exec -- curl -H "Authorization: Bearer {{STRIPE_KEY}}" https://api.stripe.co
 sec agent claude -- --dangerously-skip-permissions         # run an agent with the keyboard filtered
 sec env list                                               # environment → file → key count
 sec gen --save APP_DB_PW --env production=DB_PASSWORD      # an environment NAME, not a guessed .env
-sec place APP_DB_PW --gh muthuishere/app:production --gcp my-project
+sec push APP_DB_PW gh://muthuishere/app:production       # a GitHub Actions secret
+sec push APP_DB_PW gcp://my-project                        # GCP Secret Manager
 sec rotate APP_DB_PW --gen --hook hooks/postgres-rotate.sh  # → re-pushed to .env, GitHub, GCP
 sec where APP_DB_PW                                        # the compromise-day question
 
@@ -124,11 +125,11 @@ run next — and a wrong usage prints the closest correct command.
   explicit: `sec import .env.production --project reqsume --env production`. `sec ls` shows
   PROJECT/ENV, `sec project ls` counts per project and env. `sync`/`push` to another sec carry
   the scope (the far end needs this version to accept a scoped name).
-- **Files and tags**: `sec file add PATH [NAME] [--tag a,b]` stores a whole file or folder,
-  `sec file get NAME [-o PATH]` gives it back (stdout as-is; a folder as tar.gz), `sec file ls`.
-  `sec tag NAME a,b [--add]` sets tags on any secret or file; `sec ls --tag T` filters.
+- **Files and tags**: `sec set NAME --from PATH [--tag a,b]` stores a whole file or folder,
+  `sec get NAME --out PATH` gives it back (a new 0600 file; a folder is extracted), `sec ls` shows
+  the TYPE. `sec ls --tag T` filters.
 - **Read-only vaults**: `SEC_READONLY=1` (CI jobs, e2e test runs) allows only commands that use
-  values — `ls run exec render seal keys where logs audit env id use project` — and refuses every
+  values — `ls run exec render seal keys where logs env id use project` — and refuses every
   write, in the CLI and in the Go package.
 - **Go package**: `github.com/muthuishere/sec/pkg/vault` — `Open`/`OpenAs(caller)`, `Get`,
   `Set`, `List`, `Has`, `Redact`, `NewRedactor`. Same vault, identity and headless rules as the CLI;
@@ -163,7 +164,7 @@ run next — and a wrong usage prints the closest correct command.
   key whose public key doesn't match the vault's.
   `sec identity` shows which; `sec identity move --to keyring|file` switches (verifies the new
   location reads back *before* removing the old copy); `sec identity export --out f --confirm`
-  makes a backup for a password manager. Teammates: `sec recipients --add age1…`.
+  makes a backup for a password manager. Another machine: `sec sync NAMES WHERE` or `sec export --for KEY`.
   What the keyring buys: no plaintext key on disk, so a disk image, a Time Machine backup or an
   `rclone` of the wrong directory doesn't carry it. It does **not** stop a process running as you
   from asking the keyring — that exposure is identical to a 0600 file.
@@ -198,7 +199,7 @@ run next — and a wrong usage prints the closest correct command.
   also searched with `\r`/`\n` removed, because ordinary tools wrap long output (`xxd -p` at 60
   columns, GNU `base64` at 76, `fold`) and a value in three pieces is still the value. The tail is
   held back briefly so a match cannot slip through the seam.
-- **Placement ledger**: `env write`, `render`, `import`, `gen --env`, `place` record where a value went.
+- **Placement ledger**: `push`, `render`, `import`, `gen --env` record where a value went.
   `rotate` re-applies to all of them and prints what must be done by hand.
 - **Audit**: `~/.config/sec/audit.ndjson` — action, names, agent, cwd, template. Never values.
 

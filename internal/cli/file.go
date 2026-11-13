@@ -15,6 +15,7 @@ func init() {
 	register("file", "file add PATH [NAME] | get NAME [OUT] | ls — store a whole file or folder in the vault and get it back", cmdFile)
 	docs["file"] = helpDoc{group: "store",
 		syntax: []string{
+			"deprecated (removed in v0.4.0): sec set NAME --from PATH · sec get NAME --out PATH · sec ls",
 			"sec file add PATH [NAME] [--tag a,b]   store a file or folder (NAME defaults from the file name)",
 			"sec file get NAME [-o PATH]             print it to stdout as-is (folder = tar.gz), or write it with -o",
 			"sec file ls [--tag T]                  list stored files and folders (with tags)",
