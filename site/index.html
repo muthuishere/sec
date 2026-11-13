@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>sec — your agent uses the key without ever seeing it</title>
+<title>sec — one vault for you, your team and your agents</title>
 <meta name="description" content="A credentials broker for humans and their coding agents. Agents write {{NAME}} placeholders; sec fills them, runs the work, and scrubs the values out of the output. One Go binary, age-encrypted vault, placement ledger, one-verb rotate. No daemon, no SaaS.">
-<meta property="og:title" content="sec — your agent uses the key without ever seeing it">
+<meta property="og:title" content="sec — one vault for you, your team and your agents">
 <meta property="og:description" content="Agents write {{NAME}} placeholders. sec fills them, runs the work, scrubs the output. One static Go binary, no daemon, no SaaS.">
 <meta property="og:type" content="website">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -30,12 +30,13 @@
 
 <header class="hero" id="install">
   <div class="wrap">
-    <div class="kicker">one static Go binary · no daemon · no SaaS</div>
-    <h1>Your agent uses the key.<br><span class="ghost">It never sees the key.</span></h1>
-    <p class="lede">Coding agents need credentials and are the worst possible place to put one — every
-    value they touch lands in a transcript, a prompt cache, a log, a commit. <b>sec</b> hands the agent
-    a placeholder instead. It fills <code>{{NAME}}</code> at the moment of execution, in a child process,
-    and scrubs the value back out of everything that comes home.</p>
+    <div class="kicker">one vault · you, your team, your agents · no SaaS</div>
+    <h1>One vault for every secret.<br><span class="ghost">Your agent uses them. It never sees them.</span></h1>
+    <p class="lede"><b>sec</b> is the single place your keys live: on your laptop, shared with your team
+    through a hub you run, loaded into <code>.env</code> for Taskfile and compose, pushed to servers and CI.
+    And it is built for coding agents: they write <code>{{NAME}}</code>, sec fills it at the moment of
+    execution in a child process, and scrubs the value out of everything that comes back — so no key
+    lands in a transcript, a prompt cache, a log or a commit.</p>
 
     <div class="install">
       <div class="itabs" role="tablist">
