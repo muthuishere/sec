@@ -23,6 +23,7 @@ import (
 // known_hosts all just work. Values travel only on ssh's stdin/stdout.
 
 func init() {
+	register("login", "login ssh://[user@]host[:port] — log in to your team's hub (kept in your sec home, not the repo)", func(a []string) error { return hubConnect(a) })
 	register("hub", "hub serve|connect|pull|push|user|log — a team's shared secrets on one ssh server; pull/push project@env", cmdHub)
 }
 
@@ -97,13 +98,11 @@ func hubServe(args []string) error {
 	return srv.Serve(l)
 }
 
-// hubURL: SEC_HUB, then the repo's .sec.toml, then this machine's default.
+// hubURL: SEC_HUB, then the hub this user logged in to (sec login), kept in
+// the sec home — never in the repo.
 func hubURL() string {
 	if v := os.Getenv("SEC_HUB"); v != "" {
 		return v
-	}
-	if r, err := store.FindRepoConfig(); err == nil && r != nil && r.Hub != "" {
-		return r.Hub
 	}
 	var c struct{ Hub string }
 	if b, err := os.ReadFile(store.DefaultHubPath()); err == nil {
@@ -139,7 +138,7 @@ func sshArgs(raw string) ([]string, error) {
 // hub's errors arrive on our stderr.
 func hubCall(hubURL string, stdin []byte, cmd ...string) ([]byte, error) {
 	if hubURL == "" {
-		return nil, errors.New("no hub: run `sec hub connect ssh://host` (or set SEC_HUB)")
+		return nil, errors.New("no hub: run `sec login ssh://host` (or set SEC_HUB)")
 	}
 	dest, err := sshArgs(hubURL)
 	if err != nil {
@@ -179,7 +178,7 @@ func hubCall(hubURL string, stdin []byte, cmd ...string) ([]byte, error) {
 
 func hubConnect(args []string) error {
 	if len(args) != 1 {
-		return fmt.Errorf("usage: sec hub connect ssh://[user@]host[:port]")
+		return fmt.Errorf("usage: sec login ssh://[user@]host[:port]")
 	}
 	u := strings.TrimSuffix(args[0], "/")
 	out, err := hubCall(u, nil, "whoami")
@@ -191,23 +190,14 @@ func hubConnect(args []string) error {
 		Admin bool
 	}
 	json.Unmarshal(out, &who)
-	r, _ := store.FindRepoConfig()
-	where := ""
-	if r != nil && r.Path != "" && strings.HasSuffix(r.Path, store.RepoFile) {
-		if err := store.SetRepoHub(r.Path, u); err != nil {
-			return err
-		}
-		where = r.Path
-	} else {
-		if err := os.MkdirAll(store.Home(), 0o700); err != nil {
-			return err
-		}
-		b, _ := json.Marshal(map[string]string{"hub": u})
-		if err := os.WriteFile(store.DefaultHubPath(), append(b, '\n'), 0o600); err != nil {
-			return err
-		}
-		where = store.DefaultHubPath() + " (this machine's default hub)"
+	if err := os.MkdirAll(store.Home(), 0o700); err != nil {
+		return err
 	}
+	b, _ := json.Marshal(map[string]string{"hub": u})
+	if err := os.WriteFile(store.DefaultHubPath(), append(b, '\n'), 0o600); err != nil {
+		return err
+	}
+	where := store.DefaultHubPath()
 	role := ""
 	if who.Admin {
 		role = " (admin)"

@@ -22,38 +22,9 @@ func init() {
 // configured the hub's copy wins (the team's source of truth). Nothing is
 // printed but names.
 func cmdLoad(args []string) error {
-	scopeArg, file := "", ".env"
-	for _, a := range args {
-		if looksLikePath(a) {
-			file = a
-		} else if scopeArg == "" {
-			scopeArg = a
-		} else {
-			return fmt.Errorf("usage: sec load [ENV|PROJECT@ENV] [FILE]")
-		}
-	}
-	c := store.CurrentContext()
-	project, env := c.Project, c.Env
-	if scopeArg != "" {
-		if p, e, ok := strings.Cut(scopeArg, "@"); ok {
-			if p != "" {
-				project = p
-			}
-			env = e
-		} else {
-			env = scopeArg
-		}
-	}
-	if project == "" {
-		return fmt.Errorf("no project here: run it inside a repo with .sec.toml, or sec load PROJECT@ENV")
-	}
-	if err := store.ValidProject(project); err != nil {
+	project, env, file, err := dotenvScope("load", args)
+	if err != nil {
 		return err
-	}
-	if env != "" {
-		if err := store.ValidEnv(env); err != nil {
-			return err
-		}
 	}
 	if envfile.IsTemplate(file) {
 		return fmt.Errorf("%s is a template (committed example) — load into .env or another real file", file)
@@ -123,6 +94,45 @@ func cmdLoad(args []string) error {
 	return nil
 }
 
+// dotenvScope reads [ENV|PROJECT@ENV] [FILE] for load / save.
+func dotenvScope(verb string, args []string) (project, env, file string, err error) {
+	scopeArg := ""
+	file = ".env"
+	for _, a := range args {
+		if looksLikePath(a) {
+			file = a
+		} else if scopeArg == "" {
+			scopeArg = a
+		} else {
+			return "", "", "", fmt.Errorf("usage: sec %s [ENV|PROJECT@ENV] [FILE]", verb)
+		}
+	}
+	c := store.CurrentContext()
+	project, env = c.Project, c.Env
+	if scopeArg != "" {
+		if p, e, ok := strings.Cut(scopeArg, "@"); ok {
+			if p != "" {
+				project = p
+			}
+			env = e
+		} else {
+			env = scopeArg
+		}
+	}
+	if project == "" {
+		return "", "", "", fmt.Errorf("no project here: run it inside a repo with .sec.toml, or sec %s PROJECT@ENV", verb)
+	}
+	if err := store.ValidProject(project); err != nil {
+		return "", "", "", err
+	}
+	if env != "" {
+		if err := store.ValidEnv(env); err != nil {
+			return "", "", "", err
+		}
+	}
+	return project, env, file, nil
+}
+
 func looksLikePath(a string) bool {
 	return strings.HasPrefix(a, ".") || strings.HasPrefix(a, "/") || strings.HasPrefix(a, "~") ||
 		strings.Contains(a, "/") || strings.Contains(a, ".env")
@@ -142,8 +152,8 @@ func ensureGitIgnored(file string) string {
 	}
 	abs, _ := filepath.Abs(file)
 	rel, err := filepath.Rel(strings.TrimSpace(string(root)), abs)
-	if err != nil {
-		return ""
+	if err != nil || strings.HasPrefix(rel, "..") {
+		return "" // not inside this repo
 	}
 	f, err := os.OpenFile(filepath.Join(strings.TrimSpace(string(root)), ".gitignore"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {

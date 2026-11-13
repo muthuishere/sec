@@ -435,10 +435,12 @@ there:  sec import x.sec</pre>
     <p>One server you run, reachable over ssh only. Login is an ssh key; each user has
     <code>read</code> or <code>write</code> per project (optionally per env); the first user is admin.
     Values are encrypted at rest with the server's own key — <b>not blind</b>: you run it, you trust it.
-    The repo's <code>.sec.toml</code> gets one line, <code>hub = "ssh://…"</code>. The client uses your
+    The hub is never named in the repo: <code>sec login</code> keeps it in your sec home. The client uses your
     system <code>ssh</code>, so the agent, <code>~/.ssh/config</code> and known_hosts just work.</p>
 <pre class="block">sec hub serve --data /srv/sec-hub --listen :2222 --admin alice=alice.pub   # on the server
-sec hub connect ssh://hub.example.com:2222     # once; saved in .sec.toml (or the machine default)
+sec login ssh://hub.example.com:2222           # once per machine; kept in your sec home, not the repo
+sec load                                       # this repo's project@env (team copy) → .env
+$EDITOR .env &amp;&amp; sec save                       # changes → vault → hub (merged, nobody's keys dropped)
 sec hub pull [ENV]                             # hub → project@env in the local vault
 sec hub push [ENV]                             # local project@env → hub (replaces that env; old copy kept)
 sec hub user add NAME KEY.pub --role read|write --project P [--env E]

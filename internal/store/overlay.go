@@ -1,9 +1,7 @@
 package store
 
 import (
-	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 )
 
@@ -44,26 +42,5 @@ func HasOverlay() bool { overlayMu.RLock(); defer overlayMu.RUnlock(); return le
 // only. Used when CI has no `sec init`.
 func OverlayOnly() *Store { return &Store{Home: Home()} }
 
-// SetRepoHub writes `hub = "URL"` into the .sec.toml at path, replacing an
-// existing hub line or appending one.
-func SetRepoHub(path, url string) error {
-	b, err := os.ReadFile(path)
-	if err != nil {
-		return err
-	}
-	line := `hub = "` + url + `"`
-	lines := strings.Split(strings.TrimRight(string(b), "\n"), "\n")
-	done := false
-	for i, l := range lines {
-		if k, _, ok := strings.Cut(stripComment(l), "="); ok && strings.TrimSpace(k) == "hub" {
-			lines[i], done = line, true
-		}
-	}
-	if !done {
-		lines = append(lines, line)
-	}
-	return os.WriteFile(path, []byte(strings.Join(lines, "\n")+"\n"), 0o644)
-}
-
-// DefaultHubPath holds this machine's default hub when no repo names one.
+// DefaultHubPath holds the hub this user logged in to (never the repo).
 func DefaultHubPath() string { return filepath.Join(Home(), "hub.json") }

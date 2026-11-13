@@ -36,7 +36,6 @@ type RepoConfig struct {
 	Project    string   `json:"project"`
 	Envs       []string `json:"envs,omitempty"`
 	DefaultEnv string   `json:"default_env,omitempty"`
-	Hub        string   `json:"hub,omitempty"`
 }
 
 // Root is the folder holding the config.
@@ -153,8 +152,6 @@ func ParseRepoConfig(path string) (*RepoConfig, error) {
 			r.DefaultEnv = unquote(v)
 		case "envs":
 			r.Envs = parseList(v)
-		case "hub":
-			r.Hub = unquote(v)
 		}
 	}
 	if err := ValidProject(r.Project); err != nil {

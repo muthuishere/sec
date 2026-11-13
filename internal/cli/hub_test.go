@@ -2,42 +2,11 @@ package cli
 
 import (
 	"os"
-	"path/filepath"
 	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/muthuishere/sec/internal/store"
 )
-
-func TestSetRepoHub(t *testing.T) {
-	dir := t.TempDir()
-	p, err := store.WriteRepoConfig(dir, "billing", []string{"dev", "prod"}, "dev")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := store.SetRepoHub(p, "ssh://hub.example.com"); err != nil {
-		t.Fatal(err)
-	}
-	if err := store.SetRepoHub(p, "ssh://git@hub2:2222"); err != nil {
-		t.Fatal(err)
-	}
-	b, _ := os.ReadFile(p)
-	if strings.Count(string(b), "hub =") != 1 || !strings.Contains(string(b), "project = \"billing\"") {
-		t.Fatalf("edited file:\n%s", b)
-	}
-	r, err := store.ParseRepoConfig(p)
-	if err != nil || r.Hub != "ssh://git@hub2:2222" || r.Project != "billing" || r.DefaultEnv != "dev" {
-		t.Fatalf("%+v %v", r, err)
-	}
-	// a commented-out hub line is not replaced; a new line is appended
-	os.WriteFile(filepath.Join(dir, "x.toml"), []byte("project = \"a\"\n# hub = \"old\"\n"), 0o644)
-	store.SetRepoHub(filepath.Join(dir, "x.toml"), "ssh://h")
-	b, _ = os.ReadFile(filepath.Join(dir, "x.toml"))
-	if string(b) != "project = \"a\"\n# hub = \"old\"\nhub = \"ssh://h\"\n" {
-		t.Fatalf("%q", b)
-	}
-}
 
 func TestSSHArgs(t *testing.T) {
 	cases := map[string][]string{
