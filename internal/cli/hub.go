@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
@@ -65,7 +66,8 @@ func cmdHub(args []string) error {
 func hubServe(args []string) error {
 	fs := flags("hub serve")
 	data := fs.String("data", "", "folder for keys, users.json, data/ and log.jsonl")
-	listen := fs.String("listen", ":2222", "address to listen on")
+	listen := fs.String("listen", ":2222", "ssh address to listen on (\"\" = no ssh)")
+	httpAddr := fs.String("http", "", "also serve http on this address (e.g. :8080), for a TLS proxy in front")
 	admin := fs.String("admin", "", "NAME=PUBKEYFILE: the first admin (only when users.json is empty)")
 	if _, err := parse(fs, args); err != nil {
 		return err
@@ -90,12 +92,26 @@ func hubServe(args []string) error {
 	if err != nil {
 		return err
 	}
-	l, err := net.Listen("tcp", *listen)
-	if err != nil {
-		return err
+	errc := make(chan error, 2)
+	if *httpAddr != "" {
+		hl, err := net.Listen("tcp", *httpAddr)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(os.Stderr, "sec hub http on %s (put https in front)\n", hl.Addr())
+		go func() { errc <- http.Serve(hl, srv) }()
 	}
-	fmt.Fprintf(os.Stderr, "sec hub listening on %s (data %s)\n  host key %s\n", l.Addr(), *data, srv.HostKey())
-	return srv.Serve(l)
+	if *listen != "" {
+		l, err := net.Listen("tcp", *listen)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(os.Stderr, "sec hub listening on %s (data %s)\n  host key %s\n", l.Addr(), *data, srv.HostKey())
+		go func() { errc <- srv.Serve(l) }()
+	} else if *httpAddr == "" {
+		return errors.New("nothing to serve: give --listen and/or --http")
+	}
+	return <-errc
 }
 
 // hubURL: SEC_HUB, then the hub this user logged in to (sec login), kept in
@@ -138,7 +154,10 @@ func sshArgs(raw string) ([]string, error) {
 // hub's errors arrive on our stderr.
 func hubCall(hubURL string, stdin []byte, cmd ...string) ([]byte, error) {
 	if hubURL == "" {
-		return nil, errors.New("no hub: run `sec login ssh://host` (or set SEC_HUB)")
+		return nil, errors.New("no hub: run `sec login ssh://host` or `sec login https://host` (or set SEC_HUB)")
+	}
+	if strings.HasPrefix(hubURL, "http://") || strings.HasPrefix(hubURL, "https://") {
+		return hubCallHTTP(hubURL, stdin, cmd...)
 	}
 	dest, err := sshArgs(hubURL)
 	if err != nil {
@@ -178,7 +197,7 @@ func hubCall(hubURL string, stdin []byte, cmd ...string) ([]byte, error) {
 
 func hubConnect(args []string) error {
 	if len(args) != 1 {
-		return fmt.Errorf("usage: sec login ssh://[user@]host[:port]")
+		return fmt.Errorf("usage: sec login ssh://[user@]host[:port] | https://host[:port]")
 	}
 	u := strings.TrimSuffix(args[0], "/")
 	out, err := hubCall(u, nil, "whoami")

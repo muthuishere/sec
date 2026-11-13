@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -93,12 +94,58 @@ func FolderProjectName(root string) string {
 	if root == "" {
 		return ""
 	}
+	if _, p := RemoteProject(root); p != "" {
+		return p // same name in every teammate's clone, whatever the folder is called
+	}
 	n := notProjectChars.ReplaceAllString(strings.ToLower(filepath.Base(root)), "-")
 	n = strings.TrimLeft(n, "._-")
 	if ValidProject(n) != nil {
 		return ""
 	}
 	return n
+}
+
+// RemoteProject reads the repo's origin remote and turns it into a project:
+// git@github.com:Owner/Repo.git → ("github.com/owner/repo", "owner/repo").
+func RemoteProject(root string) (remote, project string) {
+	if root == "" {
+		return "", ""
+	}
+	out, err := exec.Command("git", "-C", root, "remote", "get-url", "origin").Output()
+	if err != nil {
+		return "", ""
+	}
+	return ParseRemote(strings.TrimSpace(string(out)))
+}
+
+// ParseRemote normalizes an ssh / https / scp-style git remote.
+func ParseRemote(raw string) (remote, project string) {
+	r := strings.TrimSuffix(strings.TrimSuffix(raw, "/"), ".git")
+	if i := strings.Index(r, "://"); i >= 0 {
+		r = r[i+3:]
+	} else if at := strings.Index(r, "@"); at >= 0 {
+		r = strings.Replace(r[at+1:], ":", "/", 1) // git@host:owner/repo
+	}
+	if at := strings.LastIndex(strings.SplitN(r, "/", 2)[0], "@"); at >= 0 {
+		r = r[at+1:] // user@host/...
+	}
+	host, path, ok := strings.Cut(r, "/")
+	if !ok || path == "" {
+		return "", ""
+	}
+	host = strings.Split(host, ":")[0]
+	var segs []string
+	for _, s := range strings.Split(strings.ToLower(path), "/") {
+		s = strings.TrimLeft(notProjectChars.ReplaceAllString(s, "-"), "._-")
+		if s != "" {
+			segs = append(segs, s)
+		}
+	}
+	p := strings.Join(segs, "/")
+	if ValidProject(p) != nil {
+		return "", ""
+	}
+	return strings.ToLower(host) + "/" + p, p
 }
 
 // FindRepoConfig walks up from the working directory to the repo root (out
@@ -272,7 +319,10 @@ func SetRepoEnv(root, env string) error {
 // its project, and this person's chosen env, else default_env.
 func RepoContext() Context {
 	r, err := FindRepoConfig()
-	if err != nil || r == nil {
+	if err != nil {
+		return Context{}
+	}
+	if r == nil {
 		return Context{}
 	}
 	env := RepoEnv(r.Root())

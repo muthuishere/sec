@@ -143,6 +143,7 @@ func cmdUse(args []string) error {
 		if e == "" {
 			c := store.CurrentContext()
 			fmt.Printf("repo %s (%s)\n  project=%s env=%s  envs=%v default_env=%s\n", rc.Root(), filepath.Base(rc.Path), orDash(c.Project), orDash(c.Env), rc.Envs, orDash(rc.DefaultEnv))
+			showRemoteHub(rc.Root(), c.Project)
 			return nil
 		}
 		if err := store.ValidEnv(e); err != nil {
@@ -173,6 +174,9 @@ func cmdUse(args []string) error {
 			return fmt.Sprintf("project=%s env=%s", orDash(c.Project), orDash(c.Env))
 		}
 		fmt.Println("current:", show(cur))
+		if root := store.FolderRoot(); root != "" {
+			showRemoteHub(root, cur.Project)
+		}
 		if cur != saved {
 			fmt.Println("  saved (sec use):", show(saved), " — overridden by SEC_PROJECT / SEC_ENV")
 		}
@@ -250,4 +254,19 @@ func cmdProject(args []string) error {
 		fmt.Printf("%-28s %-6d %s\n", name, r.Total, strings.Join(envs, " "))
 	}
 	return nil
+}
+
+// showRemoteHub prints the repo's git remote and the hub this machine uses,
+// so everyone can see which shared project they are on.
+func showRemoteHub(root, project string) {
+	if remote, p := store.RemoteProject(root); remote != "" {
+		note := ""
+		if p != project {
+			note = "  (project differs from the remote's " + p + ")"
+		}
+		fmt.Printf("  remote=%s%s\n", remote, note)
+	}
+	if h := hubURL(); h != "" {
+		fmt.Printf("  hub=%s\n", h)
+	}
 }
