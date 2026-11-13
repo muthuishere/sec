@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>sec — docs &amp; command reference</title>
+<title>sec — the vault: docs &amp; command reference</title>
 <meta name="description" content="Install, concepts and the full command reference for sec, grouped like sec help: use, store, move, audit &amp; rotate, agents, CI, the Go package, owner-only rules and the threat model.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,7 +14,7 @@
 
 <nav>
   <div class="wrap">
-    <a class="logo" href="./"><em>sec</em> —&nbsp;credentials broker</a>
+    <a class="logo" href="./"><em>sec</em> —&nbsp;one vault</a>
     <ul>
       <li><a href="./">Home</a></li>
       <li><a href="docs.html" aria-current="page">Docs</a></li>
@@ -28,7 +28,12 @@
 <header class="hero" style="padding-bottom:20px">
   <div class="wrap">
     <div class="kicker">documentation</div>
-    <h1>Every verb, every flag.</h1>
+    <h1>One vault. Every verb, every flag.</h1>
+    <p class="lede"><b>Everything in sec is the vault.</b> One age-encrypted vault on your machine holds every
+    value, file and folder, by <code>project@env:NAME</code>. The team hub is a copy of it you run; <code>.env</code>,
+    <code>config/sa.json</code>, a GitHub secret or a pod are places it was <em>put</em>, recorded so
+    <code>sec rotate</code> reaches them; and agents use it through <code>{{NAME}}</code> without reading it.
+    Every command below either fills the vault, uses it, moves a copy out, or tells you about it.</p>
     <p class="lede">Grouped the way <code>sec help</code> groups them. Flags are taken from the binary's
     own <code>sec help &lt;cmd&gt;</code>; if they drift, the binary is right and this page is wrong.
     For end-to-end walkthroughs see <a href="recipes.html">recipes</a>.</p>
@@ -605,7 +610,7 @@ sec identity adopt KEY_FILE</pre>
 
 <footer>
   <div class="wrap">
-    <div>sec — a credentials broker for humans and their agents.</div>
+    <div>sec — one vault for you, your team and your agents.</div>
     <div><a href="https://github.com/muthuishere/sec">github.com/muthuishere/sec</a></div>
   </div>
 </footer>

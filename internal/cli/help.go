@@ -275,8 +275,8 @@ func printHelp(topic string) bool {
 }
 
 func usage() {
-	fmt.Println(`sec — credentials broker for humans and their agents.
-Agents write {{NAME}} placeholders; sec fills them, runs the work, scrubs the output.
+	fmt.Println(`sec — one vault for you, your team and your agents.
+The vault holds every value, file and folder; agents use it via {{NAME}} and never see a value.
 
 Usage: sec <command> [flags]      sec help <command>  ·  sec <command> --help`)
 	by := map[string][]command{}

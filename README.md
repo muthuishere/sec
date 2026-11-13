@@ -1,8 +1,14 @@
-# sec — credentials broker for humans and their agents
+# sec — one vault for you, your team and your agents
 
-Agents write `{{NAME}}` placeholders. `sec` fills them, runs the work, and scrubs the values
-out of everything that comes back. The model never holds a secret; the audit log says who used
-what; `rotate` knows every place a value was put.
+**One vault.** Every key, `.env` value, service-account file and certs folder lives in one
+age-encrypted vault on your machine, named `project@env:NAME` (the project comes from your git
+remote). Everything else is a copy of it or a use of it:
+
+- **your team** shares it through a hub you run (`sec login`, `sec load`, `sec save`) — ssh or https, login is your ssh key;
+- **your repo** gets it back as `.env`, files and folders (`sec add`, `sec load`) — git-ignored, 0600;
+- **your servers, CI, pods** get placed copies (`sec push`, `sec sync`) that `sec rotate` updates in one verb;
+- **your agents** use it without reading it: they write `{{NAME}}`, `sec` fills it in a child process and
+  scrubs the value out of everything that comes back.
 
 ```bash
 sec init                                                   # age keypair → ~/.config/sec

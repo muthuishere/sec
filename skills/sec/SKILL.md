@@ -12,10 +12,11 @@ description: >
   what happened to this secret.
 ---
 
-# sec — the credentials broker
+# sec — the one vault
 
-You never hold a secret value. You hold **names**; `sec` holds the values (age-encrypted vault,
-`~/.config/sec/`, `SEC_HOME` overrides). Exact syntax for any command: `sec help <cmd>`.
+Every secret — value, `.env`, file, folder — lives in **one vault**; the team hub, `.env` files and
+placed copies are all copies of it. You never hold a secret value. You hold **names**; the vault
+holds the values (age-encrypted, `~/.config/sec/`, `SEC_HOME` overrides). Exact syntax for any command: `sec help <cmd>`.
 
 ## The one rule
 

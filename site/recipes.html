@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>sec — recipes</title>
+<title>sec — recipes for the vault</title>
 <meta name="description" content="Task-oriented recipes for sec: call an API with a key, set up a .env, put certs on a server, secrets into a k8s pod, CI, a leaked key, Windows.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,7 +14,7 @@
 
 <nav>
   <div class="wrap">
-    <a class="logo" href="./"><em>sec</em> —&nbsp;credentials broker</a>
+    <a class="logo" href="./"><em>sec</em> —&nbsp;one vault</a>
     <ul>
       <li><a href="./">Home</a></li>
       <li><a href="docs.html">Docs</a></li>
@@ -29,7 +29,7 @@
   <div class="wrap">
     <div class="kicker">recipes</div>
     <h1>Task first, verb second.</h1>
-    <p class="lede">Worked flows for the things you actually do. Steps marked <b>[owner]</b> need the owner
+    <p class="lede">Every recipe starts and ends in the one vault. Worked flows for the things you actually do. Steps marked <b>[owner]</b> need the owner
     (a terminal on stdin, or <code>SEC_OWNER=1</code>) — an agent hands them over as an exact command.
     Unsure which verb moves secrets? <code>sec help move</code>.</p>
   </div>
@@ -166,7 +166,7 @@ sec sync DB_PW ssh://winbox --install           # [owner] detects PowerShell on 
 
 <footer>
   <div class="wrap">
-    <div>sec — a credentials broker for humans and their agents.</div>
+    <div>sec — one vault for you, your team and your agents.</div>
     <div><a href="https://github.com/muthuishere/sec">github.com/muthuishere/sec</a></div>
   </div>
 </footer>

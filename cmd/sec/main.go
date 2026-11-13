@@ -1,4 +1,4 @@
-// sec — a credentials broker for humans and their agents.
+// sec — one vault for you, your team and your agents.
 package main
 
 import (
