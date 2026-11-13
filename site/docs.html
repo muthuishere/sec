@@ -58,7 +58,7 @@
       <div class="toc-group"><b><a href="#move">6 · Move</a></b>
         <a href="#move-table">which verb?</a> <a href="#sync">sync</a> <a href="#routes">routes &amp; + chains</a>
         <a href="#push">push</a> <a href="#target">target</a> <a href="#remote">remote</a>
-        <a href="#export">export</a> <a href="#id">id</a></div>
+        <a href="#export">export</a> <a href="#id">id</a> <a href="#hub">hub</a></div>
       <div class="toc-group"><b><a href="#audit-rotate">7 · Audit &amp; rotate</a></b>
         <a href="#where">where</a> <a href="#logs">logs</a>
         <a href="#keys">keys</a> <a href="#ok">ok</a> <a href="#rotate">rotate</a></div>
@@ -430,6 +430,24 @@ there:  sec import x.sec</pre>
     <h3 id="id">sec id</h3>
     <p>Print this vault's public key (<code>age1…</code>) — what a sender passes to
     <code>sec export --for</code> or <code>sec target add NAME &lt;key&gt;</code>.</p>
+
+    <h3 id="hub">sec hub — a team's secrets on one ssh server</h3>
+    <p>One server you run, reachable over ssh only. Login is an ssh key; each user has
+    <code>read</code> or <code>write</code> per project (optionally per env); the first user is admin.
+    Values are encrypted at rest with the server's own key — <b>not blind</b>: you run it, you trust it.
+    The repo's <code>.sec.toml</code> gets one line, <code>hub = "ssh://…"</code>. The client uses your
+    system <code>ssh</code>, so the agent, <code>~/.ssh/config</code> and known_hosts just work.</p>
+<pre class="block">sec hub serve --data /srv/sec-hub --listen :2222 --admin alice=alice.pub   # on the server
+sec hub connect ssh://hub.example.com:2222     # once; saved in .sec.toml (or the machine default)
+sec hub pull [ENV]                             # hub → project@env in the local vault
+sec hub push [ENV]                             # local project@env → hub (replaces that env; old copy kept)
+sec hub user add NAME KEY.pub --role read|write --project P [--env E]
+sec hub user rm NAME  ·  sec hub user ls  ·  sec hub log [-n N]  ·  sec logs --hub</pre>
+    <p><b>CI:</b> make a key, <code>sec hub user add ci ci.pub --role read --project P --env production</code>,
+    put the private key in <code>SEC_HUB_KEY</code> and set <code>SEC_ENV</code>. <code>sec run</code> /
+    <code>sec exec</code> then pull that env into memory — no <code>sec init</code>, nothing on disk.
+    <code>hub push</code> and <code>hub user add/rm</code> are owner-only. The hub's log
+    (<code>log.jsonl</code>) holds names, never values.</p>
 
     <!-- 7 -->
     <h2 id="audit-rotate">7 · Audit &amp; rotate</h2>

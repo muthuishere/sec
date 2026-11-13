@@ -326,6 +326,9 @@ func (s *Store) Key(name string) string {
 		return name
 	}
 	for _, q := range candidates(name) {
+		if _, ok := overlayGet(q); ok {
+			return q
+		}
 		if _, err := os.Stat(s.metaPath(q)); err == nil {
 			return q
 		}
@@ -488,6 +491,9 @@ func (s *Store) Exists(name string) bool {
 	if ValidName(name) != nil {
 		return false
 	}
+	if _, ok := overlayGet(s.Key(name)); ok {
+		return true
+	}
 	_, err := os.Stat(s.cipherPath(s.Key(name), 0))
 	return err == nil
 }
@@ -555,6 +561,9 @@ func (s *Store) Get(name string) ([]byte, error) { return s.GetVersion(name, 0) 
 func (s *Store) GetVersion(name string, version int) ([]byte, error) {
 	if err := ValidName(name); err != nil {
 		return nil, err
+	}
+	if v, ok := overlayGet(s.Key(name)); ok && version == 0 {
+		return []byte(v), nil
 	}
 	f, err := os.Open(s.cipherPath(s.Key(name), version))
 	if err != nil {

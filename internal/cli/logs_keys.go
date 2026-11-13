@@ -27,9 +27,13 @@ func cmdLogs(args []string) error {
 	asJSON := fs.Bool("json", false, "one JSON object per line")
 	nameFlag := fs.String("name", "", "filter by secret (same as the NAME positional)")
 	retired := fs.Bool("retired", false, "list secrets with retired versions still to revoke upstream")
+	hubLogs := fs.Bool("hub", false, "the hub's log instead (admins see everyone's, others their own)")
 	rest, err := parse(fs, args)
 	if err != nil {
 		return err
+	}
+	if *hubLogs {
+		return hubLog(*n)
 	}
 	name := *nameFlag
 	if len(rest) > 0 {

@@ -31,7 +31,7 @@ func cmdExec(args []string) error {
 			return err
 		}
 	}
-	s, err := open()
+	s, err := openForUse()
 	if err != nil {
 		return err
 	}
@@ -114,7 +114,7 @@ func cmdRun(args []string) error {
 		env[v] = n
 		names = append(names, n)
 	}
-	s, err := open()
+	s, err := openForUse()
 	if err != nil {
 		return err
 	}

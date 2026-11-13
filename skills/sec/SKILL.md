@@ -49,6 +49,7 @@ sec run STRIPE_KEY,DB_URL=DATABASE_URL -- go test ./...          # as env vars
 |---|---|
 | you need the command for a task (run, env vars, render, seal, gen, files, import, logs, rotate, TLS) | [references/commands.md](references/commands.md) |
 | secrets must reach a server, container, pod, CI, or a machine with no connection | [references/moving.md](references/moving.md) |
+| the team's shared secrets: `sec hub` pull/push, hub users, `SEC_HUB_KEY` in CI | [references/moving.md](references/moving.md) |
 | unsure whether you may run something, a sync warning appears, vault is read-only, deny rules | [references/permissions.md](references/permissions.md) |
 | `project@env:NAME`, `sec use`, several `.env` files, which environment | [references/projects-and-envs.md](references/projects-and-envs.md) |
 | `SEC_AGENT_WRAPPED` is set, "no usable identity" | [references/identity-and-agent.md](references/identity-and-agent.md) |

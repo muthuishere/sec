@@ -203,6 +203,14 @@ run next — and a wrong usage prints the closest correct command.
   `rotate` re-applies to all of them and prints what must be done by hand.
 - **Audit**: `~/.config/sec/audit.ndjson` — action, names, agent, cwd, template. Never values.
 
+### Team hub
+
+`sec hub serve --data DIR --admin you=you.pub` runs one ssh-only server a team shares. Users are
+ssh keys with `read`/`write` per project (optionally per env). `sec hub connect ssh://host` once,
+then `sec hub pull [ENV]` / `sec hub push [ENV]`; admins manage `sec hub user add|rm|ls`. In CI put a
+read key in `SEC_HUB_KEY` and `sec run` / `sec exec` pull in memory with no `sec init`. Values are
+encrypted at rest with the server's key — not blind. Log: names only. See [docs/team-sync.md](docs/team-sync.md).
+
 ## Threat model, honestly
 
 Defends against sloppiness and logs: secrets in transcripts, guides, commits, test output, chat.
