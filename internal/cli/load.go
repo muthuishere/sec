@@ -60,11 +60,16 @@ func cmdLoad(args []string) error {
 		}
 	}
 	from := "vault"
+	var team map[string]string
 	if hubURL() != "" && env != "" {
 		if m, err := hubFetch(project, env); err != nil {
 			fmt.Fprintf(os.Stderr, "sec: hub not reachable (%v) — using the local vault\n", err)
 		} else {
+			team = m
 			for n, v := range m {
+				if _, _, isFile := decodeBundle(v); isFile {
+					continue // files and folders go back to their paths, not into .env
+				}
 				if store.ValidName(n) == nil {
 					vals[n] = v
 				}
@@ -72,7 +77,17 @@ func cmdLoad(args []string) error {
 			from = "vault + hub"
 		}
 	}
+	restored, err := restoreRepoFiles(s, project, env, team)
+	if err != nil {
+		return err
+	}
+	if len(restored) > 0 {
+		fmt.Printf("✓ restored %d file(s)/folder(s): %s\n", len(restored), strings.Join(restored, ", "))
+	}
 	if len(vals) == 0 {
+		if len(restored) > 0 {
+			return nil
+		}
 		return fmt.Errorf("nothing to load for %s", store.Scope(project, env))
 	}
 	if err := envfile.Set(file, vals); err != nil {

@@ -5,7 +5,7 @@ fewest moving parts. Anything not listed here is out.
 
 ## What it is
 
-One server you run (`sec hub serve`), reachable over **ssh only**. It stores each project's
+One server you run (`sec hub serve`), reachable over **ssh**, or **http(s)** (`--http :8080` behind TLS; each request signed with the same ssh key). It stores each project's
 environments and decides who may read or write them. That's it.
 
 ## The pieces
@@ -15,14 +15,16 @@ environments and decides who may read or write them. That's it.
 - **Roles:** `read` or `write`, per project, optionally per env. The first user is admin.
 - **Storage:** files on the server's disk, encrypted at rest with the server's key; nightly copy to
   S3 / R2. (Not blind: you run the server, you trust it. Blind can come later if needed.)
-- **Repo:** nothing. The hub lives in each person's sec home (`sec login`), never in `.sec.toml`.
+- **Project name:** from the git remote (`git@github.com:acme/api` → `acme/api`), so every clone agrees.
+- **Repo:** only `.sec.toml` (project, envs, and the paths of files kept in sec). The hub lives in each person's sec home (`sec login`), never in `.sec.toml`.
 
 ## Commands (all of them)
 
 ```
 sec login ssh://hub.example.com           # once per machine
 sec load [ENV]                            # team's project@env → .env (Taskfile, compose)
-sec save [ENV]                            # edited .env → vault → hub (merged)
+sec save [ENV]                            # edited .env + files → vault → hub (merged)
+sec add PATH... [--env E]                 # keep a repo file/folder in sec; load restores it
 sec hub pull [ENV]                        # hub → local vault
 sec hub push [ENV]                        # local vault → hub
 sec hub user add NAME KEY --role read|write [--env E]

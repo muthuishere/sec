@@ -224,7 +224,9 @@ run next — and a wrong usage prints the closest correct command.
 `sec hub serve --data DIR --admin you=you.pub` runs one ssh-only server a team shares. Users are
 ssh keys with `read`/`write` per project (optionally per env). `sec login ssh://host` once per machine
 (kept in your sec home, never in the repo). Day to day: `sec load` writes the team's project@env into
-`.env`; edit it, then `sec save` puts the changes back and merges them into the hub. Also
+`.env` (and puts back every file or folder you kept with `sec add config/sa.json certs/`); edit
+them, then `sec save` puts the changes back and merges them into the hub. The hub speaks ssh or
+https (`sec login https://hub…`), and the project is named from the git remote. Also
 `sec hub pull [ENV]` / `sec hub push [ENV]`; admins manage `sec hub user add|rm|ls`. In CI put a
 read key in `SEC_HUB_KEY` and `sec run` / `sec exec` pull in memory with no `sec init`. Values are
 encrypted at rest with the server's key — not blind. Log: names only. See [docs/team-sync.md](docs/team-sync.md).

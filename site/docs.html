@@ -441,6 +441,8 @@ there:  sec import x.sec</pre>
 sec login ssh://hub.example.com:2222           # once per machine; kept in your sec home, not the repo
 sec load                                       # this repo's project@env (team copy) → .env
 $EDITOR .env &amp;&amp; sec save                       # changes → vault → hub (merged, nobody's keys dropped)
+sec add config/sa.json certs/              # files/folders too: sec load puts them back
+sec login https://hub.example.com          # hub over https works the same
 sec hub pull [ENV]                             # hub → project@env in the local vault
 sec hub push [ENV]                             # local project@env → hub (replaces that env; old copy kept)
 sec hub user add NAME KEY.pub --role read|write --project P [--env E]

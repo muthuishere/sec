@@ -28,7 +28,7 @@ func cmdSave(args []string) error {
 		return fmt.Errorf("no env: sec save ENV [FILE] (or set default_env in .sec.toml)")
 	}
 	vals, order, err := envfile.Parse(file)
-	if err != nil {
+	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
 	s, err := open()
@@ -63,6 +63,13 @@ func cmdSave(args []string) error {
 		}
 		changed = append(changed, k)
 	}
+	files, err := saveRepoFiles(s, project, env, team)
+	if err != nil {
+		return err
+	}
+	for n := range files {
+		changed = append(changed, n)
+	}
 	sort.Strings(changed)
 	s.Audit("save", owner.Agent(), changed, map[string]string{"file": file, "scope": scope})
 	fmt.Printf("✓ %s → %s: %d changed %v\n", file, scope, len(changed), changed)
@@ -79,7 +86,11 @@ func cmdSave(args []string) error {
 	}
 	// Merge into the hub's current copy so a teammate's keys are never dropped.
 	for _, k := range changed {
-		team[k] = vals[k]
+		if v, ok := files[k]; ok {
+			team[k] = v
+		} else {
+			team[k] = vals[k]
+		}
 	}
 	body, _ := json.Marshal(team)
 	if _, err := hubCall(hubURL(), body, "push", project, env); err != nil {

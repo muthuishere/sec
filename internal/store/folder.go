@@ -37,6 +37,7 @@ type RepoConfig struct {
 	Project    string   `json:"project"`
 	Envs       []string `json:"envs,omitempty"`
 	DefaultEnv string   `json:"default_env,omitempty"`
+	Files      []string `json:"files,omitempty"` // repo-relative files/folders kept in the vault (sec add)
 }
 
 // Root is the folder holding the config.
@@ -199,6 +200,8 @@ func ParseRepoConfig(path string) (*RepoConfig, error) {
 			r.DefaultEnv = unquote(v)
 		case "envs":
 			r.Envs = parseList(v)
+		case "files":
+			r.Files = parseList(v)
 		}
 	}
 	if err := ValidProject(r.Project); err != nil {
@@ -334,3 +337,39 @@ func RepoContext() Context {
 
 // FolderProject is the project the repo config names here ("" none).
 func FolderProject() string { return RepoContext().Project }
+
+// AddRepoFiles records repo-relative paths in .sec.toml's files list (paths
+// only, never contents), keeping everything else in the file as it is.
+func (r *RepoConfig) AddRepoFiles(rels ...string) error {
+	have := map[string]bool{}
+	for _, f := range r.Files {
+		have[f] = true
+	}
+	for _, f := range rels {
+		f = filepath.ToSlash(f)
+		if !have[f] {
+			r.Files = append(r.Files, f)
+			have[f] = true
+		}
+	}
+	q := make([]string, len(r.Files))
+	for i, f := range r.Files {
+		q[i] = fmt.Sprintf("%q", f)
+	}
+	line := "files = [" + strings.Join(q, ", ") + "]"
+	b, err := os.ReadFile(r.Path)
+	if err != nil {
+		return err
+	}
+	lines := strings.Split(strings.TrimRight(string(b), "\n"), "\n")
+	done := false
+	for i, l := range lines {
+		if k, _, ok := strings.Cut(stripComment(l), "="); ok && strings.TrimSpace(k) == "files" {
+			lines[i], done = line, true
+		}
+	}
+	if !done {
+		lines = append(lines, "# files and folders kept in sec (sec add PATH); sec load puts them back", line)
+	}
+	return os.WriteFile(r.Path, []byte(strings.Join(lines, "\n")+"\n"), 0o644)
+}

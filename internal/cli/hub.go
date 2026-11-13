@@ -280,11 +280,24 @@ func hubPull(args []string) error {
 		}
 		q := store.QualifiedName(scope, n)
 		names = append(names, n)
-		if old, err := s.Get(q); err == nil && string(old) == v {
-			continue
+		kind, data, isFile := decodeBundle(v)
+		if !isFile {
+			data = []byte(v)
 		}
-		if _, err := s.Set(q, []byte(v), "hub pull"); err != nil {
+		if old, err := s.Get(q); err == nil {
+			if om, _ := s.MetaExact(q); om != nil && om.Kind == kind && bundleDigest(kind, old) == bundleDigest(kind, data) {
+				continue
+			}
+		}
+		m, err := s.Set(q, data, "hub pull")
+		if err != nil {
 			return err
+		}
+		if m.Kind != kind {
+			m.Kind = kind
+			if err := s.SaveMeta(m); err != nil {
+				return err
+			}
 		}
 		changed++
 	}
@@ -322,15 +335,15 @@ func hubPush(args []string) error {
 		if err != nil {
 			return err
 		}
-		if meta.Kind != "" {
-			fmt.Fprintf(os.Stderr, "  skipped %s: a %s, the hub holds plain values only\n", n, meta.Kind)
-			continue
-		}
 		v, err := s.Get(k)
 		if err != nil {
 			return err
 		}
-		m[n] = string(v)
+		if meta.Kind != "" {
+			m[n] = encodeBundle(meta.Kind, v) // a file or folder
+		} else {
+			m[n] = string(v)
+		}
 		names = append(names, n)
 	}
 	if len(m) == 0 {
@@ -425,6 +438,11 @@ func hubOverlay() error {
 	m, err := hubFetch(c.Project, c.Env)
 	if err != nil {
 		return err
+	}
+	for n, v := range m {
+		if _, data, ok := decodeBundle(v); ok {
+			m[n] = string(data) // a file's bytes, usable as {{FILE_...}}
+		}
 	}
 	store.SetOverlay(c.Scope(), m)
 	return nil
