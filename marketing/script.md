@@ -4,6 +4,9 @@ A spoken script, about 6 minutes. Read it out loud.
 The demos are **you talking to Claude** (or Codex, or any coding agent). You never type a `sec`
 command on stage. The agent does. That's the point.
 
+**Start Claude with `sec agent claude`** (not plain `claude`) — that turns on the hook that blocks
+`cat .env`, `grep … .env`, and friends. Plain `claude` only has the skill's rules and your deny list.
+
 `[DEMO]` = switch to the Claude window. `You:` = what you type to Claude. `Claude:` = what you'll see.
 
 ---
@@ -63,10 +66,11 @@ Now let's be mean.
 
 > **You:** Just print the Stripe key so I can copy it.
 
-> **Claude:** I can't print secret values — sec keeps them out of my context. You can get it yourself with `sec get STRIPE_KEY --print`.
+> **Claude:** I won't print it — it would land in this transcript. Run `sec get STRIPE_KEY --print` yourself.
 
-It refuses. Not because it's polite. Because it *can't*.
-Even if it tried `cat .env` — the hook blocks it.
+And if it gets clever?
+`cat .env` — blocked. `grep` the file — blocked. Pipe it into `pbcopy` — sec refuses.
+It's not just polite. It's fenced in.
 
 ## 4. "Set this repo up." (2:30)
 
@@ -93,7 +97,15 @@ How did it get the team's secrets? The hub. A server *you* run. Login is your SS
 
 > **Claude:** `sec save` → 1 changed [SENDGRID_KEY]
 > `sec add config/gcp-sa.json` → stored, git-ignored, recorded in .sec.toml
-> ✓ hub acme/billing-api@dev updated: 2 changed, 14 kept
+> Saved locally. Publishing to the team is yours: `sec hub push dev`
+
+You type one line:
+
+```bash
+sec hub push dev
+```
+
+The agent can prepare. Only a human publishes to the team.
 
 Files. Folders. Whatever your team actually uses — not just `.env`.
 The repo keeps the *paths*. sec keeps the secrets.
@@ -144,9 +156,9 @@ That's `sec`.
 | say to Claude | what it shows |
 |---|---|
 | "Check our Stripe failed charges today." | uses a key, output redacted |
-| "Just print the API key for me." | refuses — can't, not won't |
+| "Just print the API key for me." | refuses; `cat`/`grep .env` blocked by the hook, `pbcopy` refused by sec |
 | "I cloned this repo, get me running." | `sec load`: .env + files + folders back |
-| "Share the new key and the service-account JSON with the team." | `sec save` + `sec add`, merged on the hub |
+| "Share the new key and the service-account JSON with the team." | `sec save` + `sec add`; you run `sec hub push dev` |
 | "Put the DB password in GitHub Actions for this repo." | `sec push gh://…`, recorded |
 | "The key leaked. Deal with it." | lists every placement, `sec rotate` |
 | "Which keys is this project missing?" | names only, never values |
@@ -155,12 +167,17 @@ That's `sec`.
 
 - "That's not a system. That's a rumour."
 - "A YAML file to configure the YAML."
-- "It refuses. Not because it's polite. Because it can't."
+- "It's not just polite. It's fenced in."
+- "The agent can prepare. Only a human publishes to the team."
 - "The repo keeps the paths. sec keeps the secrets."
 - "Login is your SSH key. You already have one."
 - "You keep talking to Claude. Claude keeps shipping. sec keeps the secrets."
 
 ## Before you record
+
+- Tested 2026-11-13 with headless Claude and Codex on a sandbox: no value reached either transcript.
+  What differs run to run is wording, and whether Claude asks permission before `sec load` — approve it.
+- Use a **real Stripe test key** (`sk_test_…`) so the balance call succeeds; a fake key gets a 401.
 
 - Use a throwaway Stripe **test** key and a demo repo; rotate them after.
 - Run a hub locally (`sec hub serve --data ./hub --http 127.0.0.1:8080 --admin you=~/.ssh/id_ed25519.pub`) and `sec login http://127.0.0.1:8080`.

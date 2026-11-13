@@ -127,6 +127,9 @@ func cmdRun(args []string) error {
 		extra[v] = vals[n]
 	}
 	s.Audit("run", owner.Agent(), names, map[string]string{"cmd": redactTemplate(strings.Join(rest[2:], " "))})
+	if err := execx.CheckClipboard(rest[2:]); err != nil {
+		return err
+	}
 	code, err := execx.Run(rest[2:], extra, vals)
 	if err != nil {
 		return err

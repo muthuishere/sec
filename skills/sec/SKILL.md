@@ -33,7 +33,9 @@ sec run STRIPE_KEY,DB_URL=DATABASE_URL -- go test ./...          # as env vars
 1. **Never read** `.env*`, `~/.config/sec/**`, or a file `sec render` wrote. Key names: `sec env ls`.
 2. **Never write** a literal password/token/`export X=value` into a file, guide, commit or message.
 3. **Never generate** a password yourself — `sec gen`.
-4. A placeholder in `echo`/`cat`/`env`/`printf`/`base64` is refused — that is exfiltration.
+4. A placeholder in `echo`/`cat`/`env`/`printf`/`base64` is refused — that is exfiltration. So is any
+   `sec run`/`sec exec` that pipes into `pbcopy`/`xclip`/`wl-copy`/`clip`. "Copy the key for me" →
+   give the owner `sec get NAME --print`; never put a value on the clipboard.
 5. **Missing a value?** Don't fetch it (no browser, clipboard, dashboard). Tell the owner:
    `sec set NAME --source <url> --place`.
 6. Never `scp` / `docker cp` / `kubectl cp` / `gh secret set` / `gcloud secrets` a secret by hand —

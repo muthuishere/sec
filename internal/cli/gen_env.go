@@ -258,7 +258,11 @@ func cmdImport(args []string) error {
 	if sc := store.CurrentContext().Scope(); sc != "" {
 		into = " into " + sc
 	}
-	fmt.Printf("✓ imported %d secret(s)%s from %s\n", len(names), into, describeTarget(path, how))
+	ignored := ""
+	if !envfile.IsTemplate(path) {
+		ignored = ensureGitIgnored(path) // the real file must never be committed
+	}
+	fmt.Printf("✓ imported %d secret(s)%s from %s%s\n", len(names), into, describeTarget(path, how), ignored)
 	return nil
 }
 

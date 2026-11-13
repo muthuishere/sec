@@ -21,6 +21,27 @@ var outputOnly = map[string]bool{
 	"set": true, "export": true, "tee": true, "xxd": true, "od": true, "base64": true,
 }
 
+// clipboardTools put whatever they read on the clipboard — a copy that
+// outlives the redaction and lands in clipboard managers.
+var clipboardTools = []string{"pbcopy", "xclip", "xsel", "wl-copy", "clip.exe", "clip", "set-clipboard", "osascript"}
+
+// CheckClipboard refuses a command that hands a secret to the clipboard,
+// directly or inside a shell string (sh -c '… | pbcopy').
+func CheckClipboard(argv []string) error {
+	for _, a := range argv {
+		for _, w := range strings.FieldsFunc(strings.ToLower(a), func(r rune) bool {
+			return r == ' ' || r == '|' || r == ';' || r == '&' || r == '(' || r == ')' || r == '\t' || r == '\n' || r == '/' || r == '\''
+		}) {
+			for _, t := range clipboardTools {
+				if w == t {
+					return fmt.Errorf("refusing: %s puts the secret on the clipboard. The owner can copy it themselves: sec get NAME --print", t)
+				}
+			}
+		}
+	}
+	return nil
+}
+
 // FillArgv substitutes placeholders into an argv array — never a shell string,
 // so quoting in values cannot break out.
 func FillArgv(argv []string, values map[string]string) ([]string, error) {
@@ -42,6 +63,9 @@ func CheckArgv(argv []string, allowUnsafe bool) error {
 	}
 	if allowUnsafe {
 		return nil
+	}
+	if err := CheckClipboard(argv); err != nil {
+		return err
 	}
 	hasPH := false
 	for _, a := range argv {
