@@ -135,11 +135,12 @@ func TestLegacyVault(t *testing.T) {
 	}
 }
 
-func TestFolderRemembersProject(t *testing.T) {
+func TestRepoConfig(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("SEC_HOME", filepath.Join(home, "sec"))
 	t.Setenv("SEC_PROJECT", "")
+	t.Setenv("SEC_ENV", "")
 	repo := filepath.Join(home, "My App")
 	os.MkdirAll(filepath.Join(repo, ".git"), 0o755)
 	os.MkdirAll(filepath.Join(repo, "sub"), 0o755)
@@ -149,19 +150,34 @@ func TestFolderRemembersProject(t *testing.T) {
 	if got := FolderProjectName(FolderRoot()); got != "my-app" {
 		t.Fatalf("folder project %q", got)
 	}
-	if w, err := RememberFolder("billing"); err != nil || w != filepath.Join(FolderRoot(), ".sec") {
-		t.Fatalf("wrote %q: %v", w, err)
+	if _, err := WriteRepoConfig(FolderRoot(), "billing", []string{"dev", "prod"}, "dev"); err != nil {
+		t.Fatal(err)
 	}
-	os.WriteFile(filepath.Join(repo, ".sec"), []byte("project = billing\nenv = dev\n"), 0o644)
-	if c := CurrentContext(); c.Env != "dev" {
-		t.Fatalf("env from .sec: %+v", c)
+	if _, err := WriteRepoConfig(FolderRoot(), "x", nil, ""); err == nil {
+		t.Fatal("must never overwrite .sec.toml")
 	}
-	os.WriteFile(filepath.Join(repo, ".sec"), []byte("billing\n"), 0o644)
-	if c := CurrentContext(); c.Project != "billing" {
-		t.Fatalf("context in folder = %+v", c)
+	if c := CurrentContext(); c != (Context{"billing", "dev"}) {
+		t.Fatalf("default env: %+v", c)
+	}
+	SetRepoEnv(FolderRoot(), "prod")
+	if c := CurrentContext(); c != (Context{"billing", "prod"}) {
+		t.Fatalf("switched env: %+v", c)
+	}
+	os.WriteFile(filepath.Join(repo, ".sec.toml"), []byte("project = 'billing' # c\nenvs = [ \"dev\" ]\ndefault_env = \"dev\"\n"), 0o644)
+	if c := CurrentContext(); c != (Context{"billing", "dev"}) {
+		t.Fatalf("env no longer listed falls back to default: %+v", c)
+	}
+	os.WriteFile(filepath.Join(repo, ".sec.toml"), []byte("project = \"billing\"\nenvs = [\"dev\"]\ndefault_env = \"qa\"\n"), 0o644)
+	if _, err := FindRepoConfig(); err == nil {
+		t.Fatal("default_env outside envs must be an error")
+	}
+	os.Remove(filepath.Join(repo, ".sec.toml"))
+	os.WriteFile(filepath.Join(repo, ".sec"), []byte("legacy\n"), 0o644)
+	if c := CurrentContext(); c.Project != "legacy" {
+		t.Fatalf("legacy .sec: %+v", c)
 	}
 	os.Chdir(home)
 	if c := CurrentContext(); c.Project != "" {
-		t.Fatalf("$HOME must not take a folder project: %+v", c)
+		t.Fatalf("$HOME must not take a repo project: %+v", c)
 	}
 }

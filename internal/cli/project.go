@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -24,7 +25,7 @@ import (
 // placeholders are {{…}}, and transports are ssh:// URLs in another argument.
 
 func init() {
-	register("use", "use [PROJECT] [--env E] | --unset — set the current project/env bare names resolve in; no args shows it", cmdUse)
+	register("use", "use [PROJECT] [--env E] | --unset — set the project/env bare names resolve in (inside a repo with .sec.toml: sec use ENV switches your env there); no args shows it", cmdUse)
 	register("project", "project ls [--json] — projects and their environments, with secret counts", cmdProject)
 	docs["use"] = helpDoc{group: "store",
 		syntax: []string{"sec use                          show the current context and where it comes from",
@@ -117,6 +118,44 @@ func cmdUse(args []string) error {
 	}
 	if len(rest) > 1 {
 		return fmt.Errorf("usage: sec use [PROJECT] [--env E] | --unset")
+	}
+	// Inside a repo with .sec.toml, `sec use` switches this person's env for
+	// that repo (sec use staging · sec use --env staging · --unset = default).
+	if rc, err := store.FindRepoConfig(); err != nil {
+		return err
+	} else if rc != nil {
+		e := *env
+		if len(rest) == 1 {
+			if e != "" || (rest[0] != rc.Project && !rc.HasEnv(rest[0])) {
+				return fmt.Errorf("in this repo the project is %s (%s); switch env with: sec use ENV  (envs: %v)", rc.Project, rc.Path, rc.Envs)
+			}
+			if rest[0] != rc.Project {
+				e = rest[0]
+			}
+		}
+		if *unset || *reset {
+			if err := store.SetRepoEnv(rc.Root(), ""); err != nil {
+				return err
+			}
+			fmt.Printf("✓ %s: back to default_env (%s)\n", rc.Project, orDash(rc.DefaultEnv))
+			return nil
+		}
+		if e == "" {
+			c := store.CurrentContext()
+			fmt.Printf("repo %s (%s)\n  project=%s env=%s  envs=%v default_env=%s\n", rc.Root(), filepath.Base(rc.Path), orDash(c.Project), orDash(c.Env), rc.Envs, orDash(rc.DefaultEnv))
+			return nil
+		}
+		if err := store.ValidEnv(e); err != nil {
+			return err
+		}
+		if !rc.HasEnv(e) {
+			return fmt.Errorf("env %q is not in %s envs %v — add it there first", e, rc.Path, rc.Envs)
+		}
+		if err := store.SetRepoEnv(rc.Root(), e); err != nil {
+			return err
+		}
+		fmt.Printf("✓ %s@%s in this repo — bare names resolve %s@%s:NAME, then %s:NAME, then global\n", rc.Project, e, rc.Project, e, rc.Project)
+		return nil
 	}
 	if *unset || *reset {
 		if err := store.SaveContext(store.Context{}); err != nil {

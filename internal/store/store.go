@@ -103,8 +103,8 @@ func validScope(sc string) error {
 }
 
 // Context is the scope bare names resolve in. Precedence: SEC_PROJECT /
-// SEC_ENV (also set by --project / --env), then the nearest .sec file
-// (repo root), then the context saved by `sec use`.
+// SEC_ENV (also set by --project / --env), then the repo's .sec.toml
+// (project + this person's env or default_env), then the context saved by `sec use`.
 // Each variable overrides independently; set it to "-" to force it empty.
 type Context struct {
 	Project string `json:"project,omitempty"`
@@ -150,11 +150,11 @@ func SaveContext(c Context) error {
 }
 
 // CurrentContext: SEC_PROJECT / SEC_ENV (and --project / --env) win, then the
-// .sec file of this repo (project, optional env), then `sec use`.
+// .sec.toml of this repo, then `sec use`.
 func CurrentContext() Context {
 	c := SavedContext()
-	if fc := FolderContext(); fc.Project != "" {
-		c.Project, c.Env = fc.Project, fc.Env
+	if rc := RepoContext(); rc.Project != "" {
+		c = rc // the repo's .sec.toml replaces `sec use` while you are inside it
 	}
 	if v, ok := os.LookupEnv("SEC_PROJECT"); ok && v != "" {
 		c.Project = v

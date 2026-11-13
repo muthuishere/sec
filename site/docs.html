@@ -177,12 +177,18 @@ sec init --backend file          # servers, containers, CI</pre>
     goes, including inside <code>{{…}}</code>. Bare names resolve in the current context:
     <code>project@env</code>, then <code>project</code>, then global. Precedence:
     <code>--project</code>/<code>--env</code> on any command and explicit scoped names beat
-    <code>SEC_PROJECT</code>/<code>SEC_ENV</code>, which beat the repo's <code>.sec</code> file, which beats <a href="#use-cmd"><code>sec use</code></a>.</p>
-    <p><b>A repo names its project in <code>.sec</code>.</b> A small file at the repo root — <code>project = billing</code>, optional
-    <code>env = dev</code> — that holds no secret, so commit it and the whole team resolves the same project. Anywhere in that repo,
-    bare names resolve there first, then global, with no flag and no <code>sec use</code>. <code>sec import .env</code> writes it
-    when there is none, named after the repo root or folder (<code>My App</code> → <code>my-app</code>) or the
-    <code>--project NAME</code> you give; edit it to rename. <code>$HOME</code> and <code>/</code> never count as a repo.
+    <code>SEC_PROJECT</code>/<code>SEC_ENV</code>, which beat the repo's <code>.sec.toml</code>, which beats <a href="#use-cmd"><code>sec use</code></a>.</p>
+    <p><b>A repo names its project in <code>.sec.toml</code></b> at its root — no secrets in it, so commit it and the whole
+    team resolves the same project:</p>
+<pre class="block">project = "billing"
+envs = ["dev", "staging", "production"]
+default_env = "dev"</pre>
+    <p>Anywhere in that repo bare names resolve in <code>project@env</code>, then <code>project</code>, then global — no flag, no
+    <code>sec use</code>. The env is <code>default_env</code> until you switch: <code>sec use staging</code> inside the repo (kept on your
+    machine for that repo only, never in the file; <code>sec use --unset</code> goes back to the default; <code>sec use</code> shows it).
+    Only envs listed in <code>envs</code> are accepted. Step out of the repo and its context is gone. <code>sec import .env [--env dev]</code>
+    writes the file when there is none, named after the repo root or folder (<code>My App</code> → <code>my-app</code>) or the
+    <code>--project NAME</code> you give. A legacy <code>.sec</code> file still works. <code>$HOME</code> and <code>/</code> never count as a repo.
     With <code>sec run</code> a scoped name arrives as its plain <code>NAME</code> env var.</p>
 
     <!-- 4 -->

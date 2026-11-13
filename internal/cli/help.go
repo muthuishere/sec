@@ -59,7 +59,7 @@ var docs = map[string]helpDoc{
 		next:     "sec push NAME WHERE"},
 	"import": {group: "store",
 		syntax:   []string{"sec import FILE|ENV [--project P] [--env E] [--only A,B] [--tag t] [--no-place]", "sec import SEALED_FILE        # from sec export --for", "sec import -                  # sealed export on stdin (what sec sync runs)"},
-		examples: []string{"sec import .env              # project from ./.sec; none? writes .sec named after the repo", "sec import .env --project billing   # custom name (written to .sec if missing)", "sec import .env.production --project reqsume --env production", "sec import production --only DB_PW,API_KEY", "sec import x.sec"},
+		examples: []string{"sec import .env              # project from .sec.toml; none? writes one named after the repo", "sec import .env --project billing --env dev   # custom name and env (written to .sec.toml if missing)", "sec import .env.production --project reqsume --env production", "sec import production --only DB_PW,API_KEY", "sec import x.sec"},
 		next:     "sec ls  ·  sec keys .env"},
 	"recipients": {group: "setup",
 		syntax:   []string{"sec recipients [--add age1…]"},

@@ -117,9 +117,10 @@ run next — and a wrong usage prints the closest correct command.
   current context — `project@env`, then `project`, then global — set by `sec use P [--env E]`
   (saved in `context.json`), overridden by `SEC_PROJECT`/`SEC_ENV`, overridden by
   `--project/--env` on any command or a qualified name. Writes (`set`, `gen`, `import`) go to the
-  context. A repo names its project in a `.sec` file at its root (`project = billing`, optional `env = dev`;
-  no secrets, commit it): inside the repo bare names resolve there first. `sec import .env` writes one
-  when missing, named after the repo/folder or `--project NAME`; edit it to rename.
+  context. A repo names its project in `.sec.toml` at its root (`project = "billing"`,
+  `envs = ["dev", "prod"]`, `default_env = "dev"`; no secrets, commit it): inside the repo bare names
+  resolve in project@env first. `sec use prod` inside the repo switches your env there (kept locally).
+  `sec import .env` writes the file when missing, named after the repo/folder or `--project NAME`.
   explicit: `sec import .env.production --project reqsume --env production`. `sec ls` shows
   PROJECT/ENV, `sec project ls` counts per project and env. `sync`/`push` to another sec carry
   the scope (the far end needs this version to accept a scoped name).

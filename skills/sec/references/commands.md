@@ -14,7 +14,7 @@ Exact syntax: `sec help <cmd>`. Moving secrets to other machines: [moving.md](mo
 | store a file or folder (service-account JSON, cert, key dir) | `sec file add ./sa.json` (name from the file: `SA_JSON`) or `sec file add ./certs TLS` |
 | get a stored file/folder back | `sec file get SA_JSON` prints it to stdout as-is (folder = tar.gz); `sec file get SA_JSON -o ./sa.json` writes it; `sec file ls` lists them |
 | tag secrets/files by project (many per item) | `sec tag NAME reqsume,firebase` (replace) · `sec tag NAME liveconv --add` · `sec file add PATH --tag a,b` · filter `sec ls --tag reqsume` / `sec file ls --tag reqsume` |
-| a repo `.env` into the vault | `sec import .env` → project from the repo's `.sec` (written on first import, named after the repo; edit to rename, or `--project NAME`) · `sec import .env.production --project reqsume --env production` (keys land in `reqsume@production`, no collision with global or other envs) |
+| a repo `.env` into the vault | `sec import .env` → project from the repo's `.sec.toml` (written on first import, named after the repo; edit it for envs / default_env) · switch env in the repo: `sec use staging` · `sec import .env.production --project reqsume --env production` (keys land in `reqsume@production`, no collision with global or other envs) |
 | which projects / envs exist | `sec project ls` · `sec ls --project P --env E` (PROJECT, ENV columns; `--json` has `project`, `env`) |
 | work inside one project/env | `sec use reqsume --env dev` (show: `sec use`, clear: `sec use --unset`) · per command `--project P --env E` · `SEC_PROJECT`/`SEC_ENV` |
 | a daemon / program with no TTY needs the value in a file | `sec get NAME --out FILE` — new 0600 file, never stdout, refuses an existing file or symlink, audited |

@@ -230,26 +230,40 @@ func cmdImport(args []string) error {
 			return err
 		}
 	}
-	// A plain .env lands in the project the repo's .sec file names; with no
-	// .sec, in one named after the repo / folder (or --project), and a .sec
-	// is written at the repo root so later runs here resolve there first.
-	if os.Getenv("SEC_PROJECT") == "" && store.FolderProject() == "" {
-		if fp := store.FolderProjectName(store.FolderRoot()); fp != "" {
-			if p := store.CurrentContext().Project; p == "" || p == store.SavedContext().Project {
-				os.Setenv("SEC_PROJECT", fp)
+	// A plain .env lands in the project the repo's .sec.toml names. With no
+	// .sec.toml, one is written at the repo root, named after the repo /
+	// folder (or --project), listing --env if given; later runs anywhere in
+	// the repo then resolve there with no flags.
+	rc, err := store.FindRepoConfig()
+	if err != nil {
+		return err
+	}
+	if rc == nil {
+		if root := store.FolderRoot(); root != "" {
+			p := os.Getenv("SEC_PROJECT")
+			if p == "" || p == "-" {
+				p = store.FolderProjectName(root)
+			}
+			if p != "" {
+				e := os.Getenv("SEC_ENV")
+				var envs []string
+				if e != "" && e != "-" {
+					envs = []string{e}
+				} else {
+					e = ""
+				}
+				if os.Getenv("SEC_NO_DOTSEC") == "" {
+					wrote, err := store.WriteRepoConfig(root, p, envs, e)
+					if err != nil {
+						return err
+					}
+					fmt.Printf("project %s — wrote %s (edit it to rename or add envs; commit it, no secrets)\n", p, wrote)
+				}
+				os.Setenv("SEC_PROJECT", p)
 			}
 		}
-	}
-	if p := store.CurrentContext().Project; p != "" {
-		wrote, err := store.RememberFolder(p)
-		if err != nil {
-			return err
-		}
-		if wrote != "" {
-			fmt.Printf("project %s — wrote %s (edit it to rename; commit it, it holds no secret)\n", p, wrote)
-		} else {
-			fmt.Printf("project %s\n", p)
-		}
+	} else if e := os.Getenv("SEC_ENV"); e != "" && e != "-" && !rc.HasEnv(e) {
+		return fmt.Errorf("env %q is not in %s envs %v — add it there first", e, rc.Path, rc.Envs)
 	}
 	s, err := open()
 	if err != nil {
