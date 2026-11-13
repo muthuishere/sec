@@ -64,6 +64,27 @@
   </div>
 </header>
 
+<!-- PITCH -->
+<section id="why">
+  <div class="wrap">
+    <div class="sec-kicker">why sec</div>
+    <h2 class="sec">That's not a system. That's a rumour.</h2>
+    <p class="lede">Your team shares secrets through Slack DMs and a Notion page called “DO NOT SHARE”.
+    Your coding agent reads every one of them. The industry's answer is a Vault cluster, a per-seat SaaS,
+    a sidecar and a YAML file to configure the YAML. <b>sec</b> is one binary: one encrypted vault, a hub
+    you run (login is the SSH key you already have), and placeholders your agent fills without ever seeing a value.</p>
+    <div class="term">
+      <div class="bar"><i></i><i></i><i></i><span>new hire, day one</span></div>
+<pre><span class="p">$</span> <span class="c">git clone git@github.com:acme/billing-api &amp;&amp; cd billing-api</span>
+<span class="p">$</span> <span class="c">sec load</span>          <span class="m"># .env, config/service-account.json, certs/ — back in place, 0600, git-ignored</span>
+<span class="p">$</span> <span class="c">task dev</span></pre>
+    </div>
+    <p class="lede">Keep any file or folder, not just <code>.env</code>: <code>sec add config/sa.json certs/</code>.
+    The repo keeps the paths. sec keeps the secrets. Edit, then <code>sec save</code> — merged, nobody's keys dropped.
+    A key leaks? <code>sec rotate STRIPE_KEY</code>. One verb, every copy updated.</p>
+  </div>
+</section>
+
 <!-- QUICKSTART -->
 <section id="quickstart">
   <div class="wrap">
