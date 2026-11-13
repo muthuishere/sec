@@ -63,8 +63,8 @@
         <a href="#where">where</a> <a href="#logs">logs</a>
         <a href="#keys">keys</a> <a href="#ok">ok</a> <a href="#rotate">rotate</a></div>
       <div class="toc-group"><b><a href="#agents">8 · Agents</a></b>
-        <a href="#skill">skill</a> <a href="#deny">deny rules</a> <a href="#agent">agent</a>
-        <a href="#hook">hook</a> <a href="#sh-agents">sh</a></div>
+        <a href="#skill">skill</a> <a href="#deny">deny rules</a>
+        <a href="#hook">hook</a></div>
       <div class="toc-group"><b><a href="#readonly">9 · CI / read-only</a></b></div>
       <div class="toc-group"><b><a href="#go">10 · Go package</a></b></div>
       <div class="toc-group"><b><a href="#owner-only">11 · Owner-only matrix</a></b></div>
@@ -539,27 +539,12 @@ Read(**/.env.*)
 Bash(sec get:*)            # the print path
 Bash(sec export:*)         # the bulk print path</pre>
 
-    <h3 id="agent">sec agent</h3>
-    <p>Run an agent with the human's keyboard going through sec first: every paste and Enter is checked
-    for secrets; one found is stored in the vault and the agent gets <code>{{NAME}}</code>. The agent's
-    shell becomes <code>sec sh</code> (the agent-shell mode of <code>exec</code>), and for <code>claude</code> the <a href="#hook">hook</a> is wired in
-    for the session. Arguments after the agent name pass through untouched. Without a working vault it
-    will not start.</p>
-<pre class="block">sec agent AGENT [agent args…]
-
-sec agent claude
-sec agent codex</pre>
-
     <h3 id="hook">sec hook</h3>
     <p>Pre-tool guard: an agent's file reads, writes and searches (Bash, Read, Write, Edit, Grep, Glob,
     notebooks) go past sec first; a denied call is audited as <code>hook.deny</code>.
-    <a href="#agent"><code>sec agent claude</code></a> wires it in for that session; <code>sec skill install</code> does not.</p>
+    <code>sec skill install</code> (the installer) adds it to Claude Code's settings, so plain <code>claude</code> is guarded.</p>
 <pre class="block">sec hook --client claude</pre>
 
-    <h3 id="sh-agents">sec sh</h3>
-    <p>The agent's shell: refuses reads of secret files, fills <code>{{NAME}}</code>, redacts all output.
-    <code>sec agent</code> sets it as <code>SHELL</code> / <code>CLAUDE_CODE_SHELL</code>.</p>
-<pre class="block">sec sh [shell args]</pre>
 
     <!-- 9 -->
     <h2 id="readonly">9 · CI / read-only vaults</h2>

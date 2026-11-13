@@ -4,8 +4,8 @@ A spoken script, about 6 minutes. Read it out loud.
 The demos are **you talking to Claude** (or Codex, or any coding agent). You never type a `sec`
 command on stage. The agent does. That's the point.
 
-**Start Claude with `sec agent claude`** (not plain `claude`) — that turns on the hook that blocks
-`cat .env`, `grep … .env`, and friends. Plain `claude` only has the skill's rules and your deny list.
+Plain `claude` is fine: the installer adds the skill, deny rules and a hook that blocks `cat .env`,
+`grep … .env` and friends. Nothing to wrap, nothing to remember.
 
 `[DEMO]` = switch to the Claude window. `You:` = what you type to Claude. `Claude:` = what you'll see.
 

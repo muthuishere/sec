@@ -1,10 +1,9 @@
 # Identity and how you were started
 
-## How you were started — `sec agent`
+## The hook
 
-`SEC_AGENT_WRAPPED=<agent>` in your env means the owner's keyboard went through sec first: a
-pasted secret was stored and replaced with `{{NAME}}` before you saw it. Check `sec ls --json`
-and ask for a **name**, never for the value.
+A `sec hook` refusal ("sec: refused — … would print .env …") is the guard working: don't look for
+another way to read the file. Use the command it suggests (`sec env ls`, `sec exec`, `sec run`).
 
 ## Identity
 

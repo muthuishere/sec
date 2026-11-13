@@ -216,11 +216,6 @@ vault        <span class="ok">STRIPE_KEY.age (ciphertext)</span></pre>
       <div class="verb"><b>auto-refresh</b><span>The skill is <em>built into the binary</em>. <code>sec skill install</code>
         writes that copy; every later <code>sec</code> run rewrites it when a new sec ships, so the
         instructions never drift from the CLI. (<code>--from DIR</code> symlinks a checkout for development.)</span></div>
-      <div class="verb"><b>sec agent</b><span><code>sec agent claude</code> (or codex, devin, …) runs the agent with
-        <em>every paste and Enter checked for secrets</em> before the agent sees it, its shell set to
-        <code>sec sh</code>, and — for Claude — <code>sec hook</code> wired in for that session.</span></div>
-      <div class="verb"><b>sec sh</b><span>The agent-shell mode of <code>sec exec</code>, set by <code>sec agent</code>: <em>refuses reads of secret files</em>, fills
-        <code>{{NAME}}</code>, and redacts all output — so even a plain <code>cat .env</code> comes back empty-handed.</span></div>
       <div class="verb"><b>sec hook</b><span>A Claude Code <em>PreToolUse guard</em> on Bash, Read, Write, Edit,
         Grep, Glob and notebooks: a file that holds vault values is denied before the tool runs, and the
         denial is an audit line.</span></div>

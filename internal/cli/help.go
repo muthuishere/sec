@@ -114,8 +114,8 @@ var docs = map[string]helpDoc{
 		next:     "every paste and Enter is checked for secrets before the agent sees it"},
 	"hook": {group: "setup",
 		syntax:   []string{"sec hook --client claude"},
-		examples: []string{"sec hook --client claude   # wired by sec agent claude (this session)"},
-		next:     "sec agent claude"},
+		examples: []string{"sec hook --client claude   # added to Claude Code settings by sec skill install"},
+		next:     "sec skill install"},
 
 	"sync": {group: "move",
 		syntax:   []string{"sec sync NAME[,NAME] WHERE [--dry] [--install] [--repin] [--remote-sec PATH]", "sec sync NAME[,NAME] --from WHERE [--dry]"},
@@ -292,7 +292,7 @@ Usage: sec <command> [flags]      sec help <command>  ·  sec <command> --help`)
 		sort.Slice(cs, func(i, j int) bool { return cs[i].name < cs[j].name })
 		fmt.Printf("\n%s\n", g.title)
 		for _, c := range cs {
-			if c.name == "sh" {
+			if c.name == "sh" || c.name == "agent" {
 				continue // internal: sec agent sets it as the agent shell; sec help sh still works
 			}
 			fmt.Printf("  %-11s %s\n", c.name, c.summary)

@@ -143,6 +143,7 @@ func mergeDeny(path string) error {
 	}
 	perms["deny"] = deny
 	cfg["permissions"] = perms
+	hookAdded := addSecHook(cfg)
 	b, err := json.MarshalIndent(cfg, "", "  ")
 	if err != nil {
 		return err
@@ -155,6 +156,9 @@ func mergeDeny(path string) error {
 	}
 	if !quietDeny {
 		fmt.Printf("✓ %s: %d deny rule(s) added (%d already present)\n", path, added, len(denyRules)-added)
+		if hookAdded {
+			fmt.Printf("✓ %s: sec hook added — every Bash/Read/Edit call is checked for secrets\n", path)
+		}
 	}
 	return nil
 }
@@ -236,4 +240,35 @@ func firstRun() {
 	if len(done) > 0 {
 		fmt.Fprintf(os.Stderr, "sec: first run — agent skill installed in %s\n", strings.Join(done, ", "))
 	}
+}
+
+// secHookMatcher: the tools whose input can read or write a secret.
+const secHookMatcher = "Bash|Read|Write|Edit|MultiEdit|NotebookEdit|NotebookRead|Grep|Glob"
+
+// addSecHook puts `sec hook` in Claude's PreToolUse hooks (once), so plain
+// `claude` refuses `cat .env` and friends — no wrapper command needed.
+func addSecHook(cfg map[string]any) bool {
+	hooks, _ := cfg["hooks"].(map[string]any)
+	if hooks == nil {
+		hooks = map[string]any{}
+	}
+	pre, _ := hooks["PreToolUse"].([]any)
+	for _, e := range pre {
+		m, _ := e.(map[string]any)
+		hs, _ := m["hooks"].([]any)
+		for _, h := range hs {
+			if hm, _ := h.(map[string]any); hm != nil {
+				if c, _ := hm["command"].(string); strings.Contains(c, "sec hook") {
+					return false
+				}
+			}
+		}
+	}
+	pre = append(pre, map[string]any{
+		"matcher": secHookMatcher,
+		"hooks":   []any{map[string]any{"type": "command", "command": "sec hook --client claude"}},
+	})
+	hooks["PreToolUse"] = pre
+	cfg["hooks"] = hooks
+	return true
 }
