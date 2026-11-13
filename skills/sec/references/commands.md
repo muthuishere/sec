@@ -13,6 +13,7 @@ Exact syntax: `sec help <cmd>`. Moving secrets to other machines: [moving.md](mo
 | user pasted a value in chat | `sec set NAME <<'EOF' … EOF`, then recommend `sec rotate NAME` |
 | store a file or folder (service-account JSON, cert, key dir) | `sec set SA_JSON --from ./sa.json` or `sec set TLS --from ./certs` (`sec ls` TYPE column: file/dir) |
 | get a stored file/folder back | `sec get SA_JSON --out ./sa.json` (new 0600 file; a folder is extracted to a new dir) · `sec ls` lists them (TYPE) |
+| Taskfile / compose / any tool that reads a `.env` | `sec load` (this repo's project@env → `.env`, 0600, git-ignored; hub copy wins when a hub is set) · `sec load prod .env.prod` · `sec load billing@dev FILE` — never read the file afterwards |
 | a repo `.env` into the vault | `sec import .env` → project from the repo's `.sec.toml` (written on first import, named after the repo; edit it for envs / default_env) · switch env in the repo: `sec use staging` · `sec import .env.production --project reqsume --env production` (keys land in `reqsume@production`, no collision with global or other envs) |
 | which projects / envs exist | `sec project ls` · `sec ls --project P --env E` (PROJECT, ENV columns; `--json` has `project`, `env`) |
 | work inside one project/env | `sec use reqsume --env dev` (show: `sec use`, clear: `sec use --unset`) · per command `--project P --env E` · `SEC_PROJECT`/`SEC_ENV` |

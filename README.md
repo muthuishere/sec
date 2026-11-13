@@ -70,6 +70,22 @@ sec agent claude -- --resume   # agent args pass through untouched
 `SEC_AGENT_WRAPPED` is set in the agent's environment, so the skill knows its input was filtered
 and can `sec ls` for a name whose value it was never shown.
 
+## Taskfile, docker compose and other `.env` readers
+
+```yaml
+# Taskfile.yml
+version: '3'
+dotenv: ['.env']
+```
+
+```bash
+sec load && task build          # this repo's project@env (from .sec.toml) → .env (0600, git-ignored)
+sec load prod .env.prod         # another env, another file
+```
+
+`sec load` writes the project's values with the env's on top; when a hub is configured the team's copy
+wins. Only names are printed — the values never reach the terminal or an agent.
+
 ## Install
 
 ```bash

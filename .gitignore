@@ -3,3 +3,7 @@ bin/
 *.pem
 .env*
 !.env.example
+
+/../../../../../var/folders/cb/fw9_2_fd39n1jn_xm5r7q1dh0000gn/T/TestLoadWritesProjectEnvDotenv3713657056/001/x.env
+
+/../../../../../var/folders/cb/fw9_2_fd39n1jn_xm5r7q1dh0000gn/T/TestLoadWritesProjectEnvDotenv1956220118/001/x.env
