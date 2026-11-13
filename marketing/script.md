@@ -1,7 +1,10 @@
 # sec — the talk
 
-A spoken script, about 6 minutes. Read it out loud. `[DEMO]` = switch to the terminal.
-Short lines on purpose: breathe at each line break.
+A spoken script, about 6 minutes. Read it out loud.
+The demos are **you talking to Claude** (or Codex, or any coding agent). You never type a `sec`
+command on stage. The agent does. That's the point.
+
+`[DEMO]` = switch to the Claude window. `You:` = what you type to Claude. `Claude:` = what you'll see.
 
 ---
 
@@ -19,140 +22,146 @@ And the production key? It's in a Notion page called "DO NOT SHARE".
 
 That's not a system. That's a rumour.
 
-And now we've invited a new teammate into the room.
+And now there's a new teammate in the room.
 Your coding agent.
-It reads your files. It runs your commands. It remembers everything.
-Every key it touches lands in a transcript, a prompt cache, a log, maybe a commit.
+You ask it to "fix the Stripe webhook", and the first thing it does is `cat .env`.
+Now your live key is in a transcript. In a prompt cache. On someone else's servers.
 
-So the industry's answer is… more enterprise.
-A Vault cluster. A SaaS with per-seat pricing. A sidecar. A daemon. A YAML file to configure the YAML.
+The industry's answer? More enterprise.
+A Vault cluster. A per-seat SaaS. A sidecar. A YAML file to configure the YAML.
 
 No.
 
 ## 2. The idea (0:50)
 
-One binary. One vault. For you, your team, and your agents.
+You keep talking to Claude like you always do.
+Claude keeps doing the work like it always does.
+It just never sees a secret again.
 
-It's called `sec`.
+That's `sec`. One binary. One vault. For you, your team, and your agents.
+Install it once — it teaches Claude by itself. There's nothing to learn. For you *or* for Claude.
 
-Three rules.
-Your secrets live in one encrypted vault on your machine.
-Your team shares them through a hub *you* run. Your server, your keys.
-And your agent uses every secret — and never sees a single one.
-
-That's it. No daemon. No SaaS. No account.
-
-## 3. The agent never sees the key (1:30)
+## 3. "Call the API." (1:20)
 
 `[DEMO]`
 
-```bash
-sec set STRIPE_KEY
-sec exec -- curl https://api.stripe.com/v1/charges -H "Authorization: Bearer {{STRIPE_KEY}}"
-```
+> **You:** Check if our Stripe test account has any failed charges today.
 
-The agent writes a placeholder. Curly-curly NAME.
-`sec` fills it in, in a child process, at the last possible moment.
-And whatever comes back — the key, its base64, its hex — gets scrubbed.
+> **Claude:** I'll use the stored key.
+> `sec exec -- curl https://api.stripe.com/v1/charges -H "Authorization: Bearer {{STRIPE_KEY}}"`
+> 3 failed charges today: …
+> *(the output shows `Bearer [REDACTED:STRIPE_KEY]`)*
 
-```
-Authorization: Bearer [REDACTED:STRIPE_KEY]
-```
+Look at what happened.
+Claude wrote a placeholder. Curly-curly STRIPE_KEY.
+`sec` filled it in, in a child process, at the very last moment.
+And everything that came back — the key, its base64, its hex — got scrubbed.
 
-The agent did the work. It never held the key.
-Not in its context. Not in the provider's logs. Not anywhere.
+Claude did the job. Claude never held the key.
 
-And it installs its own skill into Claude and friends. You don't teach the agent. It already knows.
+Now let's be mean.
 
-## 4. The team, without the ceremony (2:30)
+> **You:** Just print the Stripe key so I can copy it.
+
+> **Claude:** I can't print secret values — sec keeps them out of my context. You can get it yourself with `sec get STRIPE_KEY --print`.
+
+It refuses. Not because it's polite. Because it *can't*.
+Even if it tried `cat .env` — the hook blocks it.
+
+## 4. "Set this repo up." (2:30)
+
+`[DEMO]` — a fresh laptop, the new hire's first morning.
+
+> **You:** I just cloned billing-api. Get me running.
+
+> **Claude:** Running `sec load`…
+> ✓ restored config/service-account.json, certs/
+> ✓ .env ← acme/billing-api@dev (14 names)
+> Running `task dev`… server up on :3000.
+
+Day one. Thirty seconds. Nobody pasted anything into Slack.
+
+How did Claude know which project? The git remote.
+`github.com/acme/billing-api` *is* the project — on every laptop, automatically.
+How did it get the team's secrets? The hub. A server *you* run. Login is your SSH key. You already have one.
+
+## 5. "We have a new key." (3:20)
 
 `[DEMO]`
 
-```bash
-sec login ssh://hub.mycompany.com     # or https://
-```
+> **You:** I added a SendGrid key to .env, and there's a new GCP service account in config/. Share them with the team.
 
-Login is your SSH key. You already have one. No passwords, no tokens, no SSO dance.
+> **Claude:** `sec save` → 1 changed [SENDGRID_KEY]
+> `sec add config/gcp-sa.json` → stored, git-ignored, recorded in .sec.toml
+> ✓ hub acme/billing-api@dev updated: 2 changed, 14 kept
 
-The project name? It comes from your git remote.
-`github.com/acme/billing-api` is project `acme/billing-api`. On every laptop. Automatically.
+Files. Folders. Whatever your team actually uses — not just `.env`.
+The repo keeps the *paths*. sec keeps the secrets.
+And if Bob added a key five minutes ago? Still there. It merges. It never drops a teammate's work.
 
-New hire, day one:
+## 6. "The key leaked." (4:10)
 
-```bash
-git clone git@github.com:acme/billing-api
-sec load
-task dev
-```
+`[DEMO]`
 
-Done. Their `.env` is written. Their `service-account.json` is back where it belongs. Their `certs/` folder too.
-Git-ignored. Mode 0600. Nobody pasted anything into Slack.
+> **You:** The Stripe key ended up in a screenshot. Deal with it.
 
-## 5. Not just .env (3:30)
-
-Because real projects aren't just key=value.
-
-```bash
-sec add config/service-account.json certs/
-```
-
-Files. Folders. Whatever your team actually uses.
-The repo keeps only the *paths*, in `.sec.toml`. Commit it. It holds no secrets.
-`sec load` puts everything back. `sec save` sends your edits to the team.
-
-And when Bob adds a key while Alice is editing hers?
-Both survive. `sec save` merges. It never drops a teammate's work.
-
-## 6. Production, CI, servers (4:20)
-
-```bash
-sec push gh://acme/billing-api:production
-sec push gcp://acme-prod
-sec sync prod-server
-```
-
-Every place a secret lives is recorded.
-So when a key leaks:
-
-```bash
-sec rotate STRIPE_KEY
-```
+> **Claude:** Here's every place STRIPE_KEY lives: your vault, GitHub Actions for acme/billing-api, the prod server's .env.
+> Generate a new one in the Stripe dashboard, then run `sec rotate STRIPE_KEY` — I'll re-push it to all three.
 
 One verb. Every copy updated.
+Claude knows where the key lives — because sec recorded every place it was ever put.
 
-CI? One secret: `SEC_HUB_KEY`. `sec run` pulls from the hub, in memory, and runs your tests.
-
-## 7. The close (5:20)
+## 7. The close (5:10)
 
 You don't need a secrets platform.
-You need a vault, a hub you own, and a tool that respects your agent *and* distrusts it.
+You don't need to stop using AI.
+You need your agent to *use* the key without *seeing* the key.
 
-One static binary.
+You keep talking to Claude.
+Claude keeps shipping.
+sec keeps the secrets.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/muthuishere/sec/main/install.sh | sh
 ```
 
-Your agent uses the key.
-It never sees the key.
+One line. Then just ask Claude.
 
 That's `sec`.
 
 ---
 
-## Short version (30 seconds, for the home page / a reel)
+## Short version (30 seconds, home page / reel)
 
-> Your team shares secrets through Slack DMs and a Notion page called "DO NOT SHARE".
-> Your coding agent reads every one of them.
-> **sec** is one binary: one encrypted vault, a hub you run, and placeholders your agent fills
-> without ever seeing a value. `git clone`, `sec load`, `task dev`. Day one, done.
-> No daemon. No SaaS. No ceremony.
+> You ask Claude to fix the Stripe webhook. First thing it does: `cat .env`.
+> Your live key is now in a transcript on someone else's servers.
+> Install **sec** once. Keep talking to Claude like always — it calls your APIs, sets up the repo,
+> shares new keys with the team, rotates the leaked one. It uses every secret and never sees one.
+> One binary. A hub you run. No SaaS. No ceremony.
+
+## Prompts that demo well (copy these)
+
+| say to Claude | what it shows |
+|---|---|
+| "Check our Stripe failed charges today." | uses a key, output redacted |
+| "Just print the API key for me." | refuses — can't, not won't |
+| "I cloned this repo, get me running." | `sec load`: .env + files + folders back |
+| "Share the new key and the service-account JSON with the team." | `sec save` + `sec add`, merged on the hub |
+| "Put the DB password in GitHub Actions for this repo." | `sec push gh://…`, recorded |
+| "The key leaked. Deal with it." | lists every placement, `sec rotate` |
+| "Which keys is this project missing?" | names only, never values |
 
 ## Lines to keep in your pocket
 
 - "That's not a system. That's a rumour."
 - "A YAML file to configure the YAML."
-- "Respects your agent and distrusts it."
+- "It refuses. Not because it's polite. Because it can't."
 - "The repo keeps the paths. sec keeps the secrets."
 - "Login is your SSH key. You already have one."
-- "One verb. Every copy updated."
+- "You keep talking to Claude. Claude keeps shipping. sec keeps the secrets."
+
+## Before you record
+
+- Use a throwaway Stripe **test** key and a demo repo; rotate them after.
+- Run a hub locally (`sec hub serve --data ./hub --http 127.0.0.1:8080 --admin you=~/.ssh/id_ed25519.pub`) and `sec login http://127.0.0.1:8080`.
+- Claude's exact wording varies run to run; the moves above are what to look for.

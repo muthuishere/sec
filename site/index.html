@@ -68,20 +68,25 @@
 <section id="why">
   <div class="wrap">
     <div class="sec-kicker">why sec</div>
-    <h2 class="sec">That's not a system. That's a rumour.</h2>
-    <p class="lede">Your team shares secrets through Slack DMs and a Notion page called “DO NOT SHARE”.
-    Your coding agent reads every one of them. The industry's answer is a Vault cluster, a per-seat SaaS,
-    a sidecar and a YAML file to configure the YAML. <b>sec</b> is one binary: one encrypted vault, a hub
-    you run (login is the SSH key you already have), and placeholders your agent fills without ever seeing a value.</p>
+    <h2 class="sec">You keep talking to Claude. sec keeps the secrets.</h2>
+    <p class="lede">You ask your agent to fix the Stripe webhook. First thing it does: <code>cat .env</code>.
+    Your live key is now in a transcript on someone else's servers. Install <b>sec</b> once and keep working
+    the way you do — the agent calls your APIs, sets up the repo, shares new keys with the team, rotates the
+    leaked one. It uses every secret and never sees one.</p>
     <div class="term">
-      <div class="bar"><i></i><i></i><i></i><span>new hire, day one</span></div>
-<pre><span class="p">$</span> <span class="c">git clone git@github.com:acme/billing-api &amp;&amp; cd billing-api</span>
-<span class="p">$</span> <span class="c">sec load</span>          <span class="cm"># .env, config/service-account.json, certs/ — back in place, 0600, git-ignored</span>
-<span class="p">$</span> <span class="c">task dev</span></pre>
+      <div class="bar"><i></i><i></i><i></i><span>new hire, day one — talking to Claude</span></div>
+<pre><span class="p">you&gt;</span> <span class="c">I just cloned billing-api. Get me running.</span>
+<span class="cm">claude: sec load → restored config/service-account.json, certs/ · .env ← acme/billing-api@dev (14 names)</span>
+<span class="cm">        task dev → server up on :3000</span>
+
+<span class="p">you&gt;</span> <span class="c">Just print the Stripe key so I can copy it.</span>
+<span class="cm">claude: I can't — sec keeps values out of my context. Run: sec get STRIPE_KEY --print</span>
+
+<span class="p">you&gt;</span> <span class="c">The Stripe key leaked. Deal with it.</span>
+<span class="cm">claude: it lives in your vault, GitHub Actions and the prod .env — make a new one, then sec rotate STRIPE_KEY</span></pre>
     </div>
-    <p class="lede">Keep any file or folder, not just <code>.env</code>: <code>sec add config/sa.json certs/</code>.
-    The repo keeps the paths. sec keeps the secrets. Edit, then <code>sec save</code> — merged, nobody's keys dropped.
-    A key leaks? <code>sec rotate STRIPE_KEY</code>. One verb, every copy updated.</p>
+    <p class="lede">Not just <code>.env</code> — any file or folder your team uses. The repo keeps the paths;
+    sec keeps the secrets; a hub you run shares them (login is the SSH key you already have). No SaaS. No ceremony.</p>
   </div>
 </section>
 
