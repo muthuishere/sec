@@ -3,7 +3,6 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -15,88 +14,8 @@ import (
 )
 
 func init() {
-	register("place", "record where a secret lives (--file/--gh/--gcp/--render) and push the value there", cmdPlace)
 	register("where", "every placement + recent uses of a secret — the compromise-day question", cmdWhere)
 	register("rotate", "new value (stdin, --gen, or --hook) → re-push to every placement → manual steps listed", cmdRotate)
-	register("audit", "who used what, when; --retired lists old versions still to revoke upstream", cmdAudit)
-}
-
-func cmdPlace(args []string) error {
-	fs := flags("place")
-	file := fs.String("file", "", "PATH[=VAR] dotenv placement")
-	gh := fs.String("gh", "", "owner/repo[:environment][=SECRET_NAME] GitHub Actions secret")
-	gcp := fs.String("gcp", "", "project[=SECRET_NAME] GCP Secret Manager")
-	render := fs.String("render", "", "TEMPLATE=OUT rendered file")
-	pathSpec := fs.String("path", "", "PATH[:MODE] write the value/file/folder whole at PATH (e.g. a mounted volume)")
-	dry := fs.Bool("record-only", false, "record without pushing the value now")
-	rest, err := parse(fs, args)
-	if err != nil {
-		return err
-	}
-	if len(rest) != 1 {
-		return fmt.Errorf("usage: sec place NAME --file .env[=VAR] | --gh o/r[:env] | --gcp project | --render T=OUT")
-	}
-	name := rest[0]
-	s, err := open()
-	if err != nil {
-		return err
-	}
-	m, err := s.Meta(name)
-	if err != nil {
-		return fmt.Errorf("no such secret: %s", name)
-	}
-	var specs []store.Placement
-	for kind, spec := range map[string]string{"file": *file, "gh": *gh, "gcp": *gcp, "render": *render} {
-		if spec == "" {
-			continue
-		}
-		// A file placement may name an environment instead of a path.
-		if kind == "file" {
-			path, v, _, err := resolveEnvSpec(spec, store.BareName(name))
-			if err != nil {
-				return err
-			}
-			spec = path + "=" + v
-		}
-		p, err := place.Parse(kind, spec, name)
-		if err != nil {
-			return err
-		}
-		if kind == "file" {
-			p.Env = environmentOf(p.Path)
-		}
-		specs = append(specs, p)
-	}
-	if *pathSpec != "" {
-		pth, mode, _ := strings.Cut(*pathSpec, ":")
-		abs, _ := filepath.Abs(pth)
-		specs = append(specs, store.Placement{Type: "path", Path: abs, Mode: mode})
-	}
-	if len(specs) == 0 {
-		return fmt.Errorf("give at least one of --file/--gh/--gcp/--render/--path")
-	}
-	val := ""
-	if !*dry {
-		v, err := s.Get(name)
-		if err != nil {
-			return err
-		}
-		val = string(v)
-	}
-	for _, p := range specs {
-		m.AddPlacement(p)
-		if *dry {
-			fmt.Printf("  · recorded %s\n", p)
-			continue
-		}
-		if err := place.One(s, name, p, val, s.Resolve); err != nil {
-			fmt.Printf("  ✗ %s\n      %v\n", p, err)
-		} else {
-			fmt.Printf("  ✓ %s\n", p)
-		}
-	}
-	s.Audit("place", owner.Agent(), []string{name}, map[string]string{"count": fmt.Sprint(len(specs))})
-	return s.SaveMeta(m)
 }
 
 func cmdWhere(args []string) error {
@@ -255,15 +174,10 @@ func cmdRotate(args []string) error {
 		}
 	}
 	if failed > 0 {
-		fmt.Printf("  ⚠ %d placement(s) failed above — fix and run `sec place %s` again, or `sec rotate %s --undo`\n", failed, name, name)
+		fmt.Printf("  ⚠ %d placement(s) failed above — fix and run `sec rotate %s` again, or `sec rotate %s --undo`\n", failed, name, name)
 	}
 	fmt.Printf("  · when the old value is revoked: sec rotate %s --purge\n", name)
 	return nil
-}
-
-// cmdAudit is deprecated (v0.3.0): it is sec logs with every entry shown.
-func cmdAudit(args []string) error {
-	return cmdLogs(append([]string{"-n", "0"}, args...))
 }
 
 // listRetired lists secrets whose old versions still need revoking upstream.

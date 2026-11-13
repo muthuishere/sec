@@ -33,7 +33,7 @@ func register(name, summary string, run func([]string) error) {
 // job) may run: they use values without changing, moving or printing them.
 var readOnlyOK = map[string]bool{
 	"ls": true, "run": true, "exec": true, "render": true, "seal": true,
-	"keys": true, "where": true, "logs": true, "audit": true, "env": true,
+	"keys": true, "where": true, "logs": true, "env": true,
 	"id": true, "use": true, "project": true,
 }
 
@@ -63,9 +63,6 @@ func Main(args []string) int {
 			if store.ReadOnly() && !readOnlyOK[c.name] {
 				fmt.Fprintf(os.Stderr, "sec: %s is not allowed: this vault is read-only (SEC_READONLY=1)\n", c.name)
 				return 1
-			}
-			if msg := deprecation(c.name, args[1:]); msg != "" {
-				fmt.Fprintln(os.Stderr, msg) // stderr only: stdout stays clean for --json
 			}
 			rest, err := scopeFlags(c.name, args[1:])
 			if err == nil {
@@ -104,8 +101,8 @@ func flags(name string) *flag.FlagSet {
 }
 
 // parse runs fs on args and returns the rest; flag errors become usage exits.
-// Go's flag stops at the first positional, so `sec set NAME --tag x` would
-// silently ignore --tag. Leading positionals are moved after the flags;
+// Go's flag stops at the first positional, so `sec set NAME --raw` would
+// silently ignore --raw. Leading positionals are moved after the flags;
 // anything after a literal -- is left untouched, in order.
 func parse(fs *flag.FlagSet, args []string) ([]string, error) {
 	var lead []string

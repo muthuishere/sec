@@ -10,82 +10,10 @@ import (
 	"strings"
 
 	"github.com/muthuishere/sec/internal/store"
-
-	"github.com/muthuishere/sec/internal/cert"
-	"github.com/muthuishere/sec/internal/owner"
 )
 
 func init() {
-	register("cert", "cert ca | cert issue --cn HOST | cert self-signed --cn HOST — local TLS, keys 0600", cmdCert)
 	register("skill", "skill install — link the agent skill into ~/.claude/skills + ~/.agents/skills and add harness deny rules", cmdSkill)
-}
-
-func cmdCert(args []string) error {
-	if len(args) == 0 {
-		return fmt.Errorf("usage: sec cert ca [--trust] | sec cert issue --cn HOST [--san a,b] [--out DIR] | sec cert self-signed --cn HOST")
-	}
-	s, err := open()
-	if err != nil {
-		return err
-	}
-	sub, rest := args[0], args[1:]
-	switch sub {
-	case "ca":
-		fs := flags("cert ca")
-		days := fs.Int("days", 3650, "validity")
-		trust := fs.Bool("trust", false, "run the OS command to trust the CA for this user (macOS login keychain)")
-		if _, err := parse(fs, rest); err != nil {
-			return err
-		}
-		f, created, err := cert.CA(s.CertDir(), "sec local CA", *days)
-		if err != nil {
-			return err
-		}
-		if created {
-			fmt.Printf("✓ CA created: %s (key %s, 0600)\n", f.Cert, f.Key)
-			s.Audit("cert.ca", owner.Agent(), nil, nil)
-		} else {
-			fmt.Printf("CA exists: %s\n", f.Cert)
-		}
-		cmdStr := cert.TrustCommand(f.Cert)
-		if *trust {
-			fmt.Println("→", cmdStr)
-			return runPlain("sh", "-c", cmdStr)
-		}
-		fmt.Println("trust it for this user with:\n  " + cmdStr)
-		return nil
-	case "issue", "self-signed":
-		fs := flags("cert " + sub)
-		cn := fs.String("cn", "", "common name (also first SAN)")
-		san := fs.String("san", "", "extra SANs, comma-separated (DNS or IP)")
-		out := fs.String("out", "./certs", "output dir")
-		days := fs.Int("days", 825, "validity (825 = Apple's max for leaf certs)")
-		if _, err := parse(fs, rest); err != nil {
-			return err
-		}
-		if *cn == "" {
-			return fmt.Errorf("--cn is required")
-		}
-		var f cert.Files
-		if sub == "issue" {
-			f, err = cert.Issue(s.CertDir(), *out, *cn, splitList(*san), *days)
-		} else {
-			f, err = cert.SelfSigned(*out, *cn, splitList(*san), *days)
-		}
-		if err != nil {
-			return err
-		}
-		s.Audit("cert."+sub, owner.Agent(), nil, map[string]string{"cn": *cn, "out": *out})
-		fmt.Printf("✓ cert: %s\n✓ key : %s (0600)\n", f.Cert, f.Key)
-		return nil
-	}
-	return fmt.Errorf("unknown cert subcommand %q", sub)
-}
-
-func runPlain(name string, args ...string) error {
-	c := execCommand(name, args...)
-	c.Stdout, c.Stderr, c.Stdin = os.Stdout, os.Stderr, os.Stdin
-	return c.Run()
 }
 
 // skill install: put the agent skill into both skill roots and merge deny

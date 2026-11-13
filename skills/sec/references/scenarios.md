@@ -41,7 +41,7 @@ Worked flows, step by step. Syntax is in [commands.md](commands.md); anything ma
 Owner: `sec export --only A,B --for <their sec id> --out x.sec` (their id: `sec id` there). On the other machine: `sec import x.sec`.
 
 ## 10. CI or e2e runs (SEC_READONLY=1)
-Only `ls run exec render seal keys where logs audit env id use project` work. If something else is refused, report it; do not look for a way around.
+Only `ls run exec render seal keys where logs env id use project` work. If something else is refused, report it; do not look for a way around.
 
 ## 11. A key leaked
 1. `sec where NAME` and `sec logs NAME --since 7d` — where it lives and who used it.

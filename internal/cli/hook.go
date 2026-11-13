@@ -142,7 +142,7 @@ func judgeRead(path string) (string, []string) {
 
 func judgeWrite(path, text string) (string, []string) {
 	if path != "" && policy.IsSecretFile(path) {
-		return "sec: " + path + " holds secrets, and agents do not write it directly. Put a stored secret into it with `sec env write " + path + " NAME[=VAR]`, or generate one with `sec gen --save NAME --env " + path + "=VAR`.", nil
+		return "sec: " + path + " holds secrets, and agents do not write it directly. Put a stored secret into it with `sec push NAME " + path + " [--as VAR]`, or generate one with `sec gen --save NAME --env " + path + "=VAR`.", nil
 	}
 	sealed, names := sealText(text)
 	if len(names) == 0 {

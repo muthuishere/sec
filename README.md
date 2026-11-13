@@ -125,9 +125,9 @@ run next — and a wrong usage prints the closest correct command.
   explicit: `sec import .env.production --project reqsume --env production`. `sec ls` shows
   PROJECT/ENV, `sec project ls` counts per project and env. `sync`/`push` to another sec carry
   the scope (the far end needs this version to accept a scoped name).
-- **Files and tags**: `sec set NAME --from PATH [--tag a,b]` stores a whole file or folder,
+- **Files**: `sec set NAME --from PATH` stores a whole file or folder,
   `sec get NAME --out PATH` gives it back (a new 0600 file; a folder is extracted), `sec ls` shows
-  the TYPE. `sec ls --tag T` filters.
+  the TYPE.
 - **Read-only vaults**: `SEC_READONLY=1` (CI jobs, e2e test runs) allows only commands that use
   values — `ls run exec render seal keys where logs env id use project` — and refuses every
   write, in the CLI and in the Go package.

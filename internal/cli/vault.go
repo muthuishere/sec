@@ -19,7 +19,6 @@ func init() {
 	register("get", "get NAME --out FILE writes the value to a new 0600 file (agents ok); --print shows it (owner-only)", cmdGet)
 	register("ls", "list secret names (never values); --json for agents", cmdLs)
 	register("rm", "delete a secret and its retired versions", cmdRm)
-	register("recipients", "list/add age public keys that can decrypt the vault", cmdRecipients)
 }
 
 func cmdInit(args []string) error {
@@ -48,18 +47,17 @@ func cmdInit(args []string) error {
 
 func cmdSet(args []string) error {
 	fs := flags("set")
-	tags := fs.String("tag", "", "comma-separated tags")
 	source := fs.String("source", "", "where this is minted/revoked (URL or note) — used by rotate")
 	raw := fs.Bool("raw", false, "keep trailing newline (PEM/JSON material)")
 	placeAll := fs.Bool("place", false, "after storing, re-apply to every recorded placement")
-	from := fs.String("from", "", "store a whole file or folder (certs, key dirs, …) instead of a value; add destinations with sec place --path / sec push --path")
+	from := fs.String("from", "", "store a whole file or folder (certs, key dirs, …) instead of a value; send it somewhere with sec push NAME PATH")
 	kind := fs.String("kind", "", "internal: kind of the stdin value (file|dir) — set by sec push")
 	rest, err := parse(fs, args)
 	if err != nil {
 		return err
 	}
 	if len(rest) != 1 {
-		return fmt.Errorf("usage: sec set NAME [--tag a,b] [--source url] [--raw] [--place] [--from FILE|DIR]  < value on stdin")
+		return fmt.Errorf("usage: sec set NAME [--source url] [--raw] [--place] [--from FILE|DIR]  < value on stdin")
 	}
 	name := rest[0]
 	if err := store.ValidName(name); err != nil {
@@ -90,9 +88,6 @@ func cmdSet(args []string) error {
 		return err
 	}
 	m.Kind = k
-	if *tags != "" {
-		m.Tags = splitList(*tags)
-	}
 	if *source != "" {
 		m.Source = *source
 	}
@@ -177,7 +172,7 @@ func getToFile(name, out string) error {
 		return err
 	}
 	if m, err := s.Meta(name); err == nil && m.Kind == bundle.KindDir {
-		// a stored folder is extracted (what sec file get -o did), still only to a new path
+		// a stored folder is extracted still only to a new path
 		if _, err := os.Lstat(out); err == nil {
 			return fmt.Errorf("%s already exists — sec get --out writes only a new path (remove it first)", out)
 		}
@@ -214,7 +209,6 @@ type lsRow struct {
 	Project    string    `json:"project"`
 	Env        string    `json:"env"`
 	Version    int       `json:"version"`
-	Tags       []string  `json:"tags,omitempty"`
 	Type       string    `json:"type"`
 	Source     string    `json:"source,omitempty"`
 	Placements int       `json:"placements"`
@@ -226,7 +220,6 @@ type lsRow struct {
 func cmdLs(args []string) error {
 	fs := flags("ls")
 	asJSON := fs.Bool("json", false, "machine output")
-	tag := fs.String("tag", "", "only secrets with this tag")
 	if _, err := parse(fs, args); err != nil {
 		return err
 	}
@@ -245,9 +238,6 @@ func cmdLs(args []string) error {
 		if err != nil {
 			continue
 		}
-		if *tag != "" && !hasTag(m, *tag) {
-			continue
-		}
 		if explicitScope.project != "" && m.Project != explicitScope.project {
 			continue
 		}
@@ -258,7 +248,7 @@ func cmdLs(args []string) error {
 		if typ == "" {
 			typ = "value"
 		}
-		r := lsRow{Name: n, Project: m.Project, Env: m.Env, Version: m.Version, Tags: m.Tags, Type: typ, Source: m.Source, Placements: len(m.Placements), Retired: len(m.Retired), Updated: m.Updated}
+		r := lsRow{Name: n, Project: m.Project, Env: m.Env, Version: m.Version, Type: typ, Source: m.Source, Placements: len(m.Placements), Retired: len(m.Retired), Updated: m.Updated}
 		if t, ok := used[n]; ok {
 			r.LastUsed = t.Format(time.RFC3339)
 		}
@@ -274,24 +264,15 @@ func cmdLs(args []string) error {
 		fmt.Println("(empty vault)")
 		return nil
 	}
-	fmt.Printf("%-20s %-12s %-32s %-5s %-4s %-6s %-16s %-16s %s\n", "PROJECT", "ENV", "NAME", "TYPE", "VER", "PLACED", "TAGS", "LAST USED", "SOURCE")
+	fmt.Printf("%-20s %-12s %-32s %-5s %-4s %-6s %-16s %s\n", "PROJECT", "ENV", "NAME", "TYPE", "VER", "PLACED", "LAST USED", "SOURCE")
 	for _, r := range rows {
 		lu := "-"
 		if r.LastUsed != "" {
 			lu = r.LastUsed[:16]
 		}
-		fmt.Printf("%-20s %-12s %-32s %-5s v%-3d %-6d %-16s %-16s %s\n", orDash(r.Project), orDash(r.Env), store.BareName(r.Name), r.Type, r.Version, r.Placements, strings.Join(r.Tags, ","), lu, r.Source)
+		fmt.Printf("%-20s %-12s %-32s %-5s v%-3d %-6d %-16s %s\n", orDash(r.Project), orDash(r.Env), store.BareName(r.Name), r.Type, r.Version, r.Placements, lu, r.Source)
 	}
 	return nil
-}
-
-func hasTag(m *store.Meta, t string) bool {
-	for _, x := range m.Tags {
-		if x == t {
-			return true
-		}
-	}
-	return false
 }
 
 func cmdRm(args []string) error {
@@ -322,41 +303,6 @@ func cmdRm(args []string) error {
 	}
 	s.Audit("rm", owner.Agent(), rest, nil)
 	fmt.Println("✓ removed", rest[0])
-	return nil
-}
-
-func cmdRecipients(args []string) error {
-	fs := flags("recipients")
-	add := fs.String("add", "", "age public key (age1…) to add; re-encrypts every secret")
-	if _, err := parse(fs, args); err != nil {
-		return err
-	}
-	s, err := open()
-	if err != nil {
-		return err
-	}
-	if *add != "" {
-		if err := s.AddRecipient(*add); err != nil {
-			return err
-		}
-		n, err := s.ReencryptAll()
-		if err != nil {
-			return err
-		}
-		s.Audit("recipients.add", owner.Agent(), nil, map[string]string{"pub": *add, "reencrypted": fmt.Sprint(n)})
-		fmt.Printf("✓ added recipient, re-encrypted %d secret(s)\n", n)
-	}
-	recs, err := s.Recipients()
-	if err != nil {
-		return err
-	}
-	for _, r := range recs {
-		me := ""
-		if r == s.PublicKey() {
-			me = "  (this machine)"
-		}
-		fmt.Println(r + me)
-	}
 	return nil
 }
 

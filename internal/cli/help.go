@@ -36,8 +36,8 @@ var docs = map[string]helpDoc{
 		examples: []string{"sec init", "sec init --backend file          # servers, containers, CI"},
 		next:     "sec set NAME  ·  sec import .env  ·  sec skill install"},
 	"set": {group: "store",
-		syntax:   []string{"sec set NAME [--tag a,b] [--source URL] [--raw] [--place]  < value on stdin", "sec set NAME --from FILE|DIR"},
-		examples: []string{"sec set OPENAI_API_KEY                 # masked prompt", "printf %s \"$V\" | sec set DB_PW --tag prod", "sec set TLS --from ./certs             # a whole folder"},
+		syntax:   []string{"sec set NAME [--source URL] [--raw] [--place]  < value on stdin", "sec set NAME --from FILE|DIR"},
+		examples: []string{"sec set OPENAI_API_KEY                 # masked prompt", "printf %s \"$V\" | sec set DB_PW", "sec set TLS --from ./certs             # a whole folder"},
 		next:     "sec push NAME .env  ·  sec run NAME -- cmd  ·  sec sync NAME ssh://host"},
 	"get": {group: "store",
 		syntax:   []string{"sec get NAME --out FILE      write the raw value to a NEW 0600 file (never stdout)", "sec get NAME --print"},
@@ -45,8 +45,8 @@ var docs = map[string]helpDoc{
 		owner:    "--print is owner-only: it writes the plaintext value to the terminal. --out is open to agents (like render): an existing file or symlink is refused, every write is audited.",
 		next:     "to USE a value, don't print it: sec run NAME -- cmd  ·  sec exec -- cmd {{NAME}}"},
 	"ls": {group: "store",
-		syntax:   []string{"sec ls [--project P] [--env E] [--tag T] [--json]"},
-		examples: []string{"sec ls", "sec ls --project reqsume --env production", "sec ls --json --tag prod"},
+		syntax:   []string{"sec ls [--project P] [--env E] [--json]"},
+		examples: []string{"sec ls", "sec ls --project reqsume --env production", "sec ls --json"},
 		next:     "sec where NAME  ·  sec keys .env"},
 	"rm": {group: "store",
 		syntax:   []string{"sec rm NAME"},
@@ -58,13 +58,9 @@ var docs = map[string]helpDoc{
 		owner:    "--print is owner-only.",
 		next:     "sec push NAME WHERE"},
 	"import": {group: "store",
-		syntax:   []string{"sec import FILE|ENV [--project P] [--env E] [--only A,B] [--tag t] [--no-place]", "sec import SEALED_FILE        # from sec export --for", "sec import -                  # sealed export on stdin (what sec sync runs)"},
+		syntax:   []string{"sec import FILE|ENV [--project P] [--env E] [--only A,B] [--no-place]", "sec import SEALED_FILE        # from sec export --for", "sec import -                  # sealed export on stdin (what sec sync runs)"},
 		examples: []string{"sec import .env              # project from .sec.toml; none? writes one named after the repo", "sec import .env --project billing --env dev   # custom name and env (written to .sec.toml if missing)", "sec import .env.production --project reqsume --env production", "sec import production --only DB_PW,API_KEY", "sec import x.sec"},
 		next:     "sec ls  ·  sec keys .env"},
-	"recipients": {group: "setup",
-		syntax:   []string{"sec recipients [--add age1…]   deprecated: sec sync NAMES WHERE / sec export --for KEY"},
-		examples: []string{"sec recipients", "sec recipients --add age1…   # another machine can open the whole vault"},
-		next:     "to send only some secrets: sec sync NAMES WHERE"},
 	"identity": {group: "setup",
 		syntax:   []string{"sec identity [show [--json]]", "sec identity move --to keyring|file", "sec identity export --out FILE --confirm", "sec identity import FILE [--backend keyring|file]", "sec identity adopt KEY_FILE"},
 		examples: []string{"sec identity", "sec identity move --to file"},
@@ -89,7 +85,7 @@ var docs = map[string]helpDoc{
 		examples: []string{"sec seal notes.md --check", "sec seal config.yaml"},
 		next:     "commit the sealed file; sec render puts the values back"},
 	"env": {group: "use",
-		syntax:   []string{"sec env list", "sec env ls TARGET", "sec env write TARGET NAME[=VAR]…   deprecated: sec push NAME TARGET [--as VAR]"},
+		syntax:   []string{"sec env list", "sec env ls TARGET"},
 		examples: []string{"sec env ls .env", "sec env list"},
 		next:     "sec keys .env — what is missing  ·  sec push NAME .env — write a value into it"},
 	"sh": {group: "use",
@@ -146,10 +142,6 @@ var docs = map[string]helpDoc{
 		syntax:   []string{"sec logs [NAME | --name NAME] [--since 7d] [--action A] [-n 50] [--json]", "sec logs --retired [--json]      secrets with old versions still to revoke upstream"},
 		examples: []string{"sec logs DB_PW --since 7d", "sec logs --action sync.push", "sec logs --retired"},
 		next:     "sec where NAME"},
-	"audit": {group: "audit",
-		syntax:   []string{"sec audit [--name N] [--action A] [--since 7d] [--retired]   deprecated: sec logs takes the same flags"},
-		examples: []string{"sec audit --retired"},
-		next:     "revoke retired versions upstream, then sec rotate NAME --purge"},
 	"keys": {group: "audit",
 		syntax:   []string{"sec keys [FILE…]"},
 		examples: []string{"sec keys .env.example", "sec keys"},
@@ -159,19 +151,11 @@ var docs = map[string]helpDoc{
 		examples: []string{"sec ok --dry", "sec ok"},
 		next:     "run the commands it lists"},
 
-	"place": {group: "rotate",
-		syntax:   []string{"sec place NAME --file .env[=VAR] | --gh o/r[:env] | --gcp project | --render T=OUT | --path P[:MODE] [--record-only]", "deprecated: sec push NAME .env | gh://o/r[:env] | gcp://project | PATH [--as VAR]"},
-		examples: []string{"sec place GH_TOKEN --gh muthu/app:prod", "sec place DB_PW --render db.tmpl=db.conf"},
-		next:     "use sec push instead  ·  sec where NAME"},
 	"rotate": {group: "rotate",
 		syntax:   []string{"sec rotate NAME [--gen | < new value] [--hook SCRIPT]", "sec rotate NAME --undo | --purge"},
 		examples: []string{"sec rotate DB_PW --gen --hook ./alter-user.sh", "sec rotate API_KEY   # paste the new one", "sec rotate API_KEY --purge"},
 		next:     "revoke the old value upstream (rotate prints where)"},
 
-	"cert": {group: "setup",
-		syntax:   []string{"deprecated (removed in v0.4.0): use mkcert, then sec set NAME --from ./certs", "sec cert ca [--trust]", "sec cert issue --cn HOST [--san a,b] [--out DIR]", "sec cert self-signed --cn HOST"},
-		examples: []string{"sec cert ca", "sec cert issue --cn api.local --san 127.0.0.1"},
-		next:     "sec set TLS --from ./certs  ·  sec push TLS WHERE"},
 	"skill": {group: "setup",
 		syntax:   []string{"sec skill install [--no-settings]", "sec skill install --from DIR   # symlink a checkout (development)"},
 		examples: []string{"sec skill install", "sec skill install --from ./skills/sec"},
@@ -283,8 +267,8 @@ Usage: sec <command> [flags]      sec help <command>  ·  sec <command> --help`)
 		sort.Slice(cs, func(i, j int) bool { return cs[i].name < cs[j].name })
 		fmt.Printf("\n%s\n", g.title)
 		for _, c := range cs {
-			if hidden[c.name] {
-				continue // deprecated / internal: still runs, sec help CMD still works
+			if c.name == "sh" {
+				continue // internal: sec agent sets it as the agent shell; sec help sh still works
 			}
 			fmt.Printf("  %-11s %s\n", c.name, c.summary)
 		}

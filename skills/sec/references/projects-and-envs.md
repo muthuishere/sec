@@ -10,7 +10,7 @@ refused as write targets.
 ## Projects and environments
 
 A secret's identity is (project, env, NAME); both parts are optional. Address it anywhere a NAME
-goes — `ls`, `rm`, `tag`, `where`, `logs`, `rotate`, `place`, `push`, `sync`, `get`, `run`, `{{…}}`:
+goes — `ls`, `rm`, `where`, `logs`, `rotate`, `push`, `sync`, `get`, `run`, `{{…}}`:
 
 | address | meaning |
 |---|---|
@@ -38,5 +38,5 @@ Only envs listed in `envs` are accepted. Leave the repo and its context is gone.
 project or env. A legacy `.sec` (`project = x`) still works. `$HOME` and `/` never count as a repo.
 
 Context precedence: qualified name > `--project/--env` > `SEC_PROJECT/SEC_ENV` > the repo's `.sec.toml` (+ your `sec use ENV` there) > `sec use`. Writes
-(set, gen, import) go to the current context. Use projects, not NAME prefixes; tags stay labels.
+(set, gen, import) go to the current context. Use projects, not NAME prefixes.
 sync/push to another sec carry the scope. The vault dir is ciphertext: the owner may git/rclone it.

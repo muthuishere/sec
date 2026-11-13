@@ -4,12 +4,10 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
 
 	"github.com/muthuishere/sec/internal/envfile"
 	"github.com/muthuishere/sec/internal/gen"
 	"github.com/muthuishere/sec/internal/owner"
-	"github.com/muthuishere/sec/internal/place"
 	"github.com/muthuishere/sec/internal/store"
 )
 
@@ -27,7 +25,6 @@ func cmdGen(args []string) error {
 	hex := fs.Bool("hex", false, "hex token of --len random bytes")
 	save := fs.String("save", "", "store as this secret NAME")
 	env := fs.String("env", "", "also write to FILE=VAR (repeatable via comma)")
-	tags := fs.String("tag", "", "tags for --save")
 	print := fs.Bool("print", false, "owner-only: print the value instead")
 	if _, err := parse(fs, args); err != nil {
 		return err
@@ -53,9 +50,6 @@ func cmdGen(args []string) error {
 		}
 		if m, err = s.Set(*save, []byte(pw), "gen"); err != nil {
 			return err
-		}
-		if *tags != "" {
-			m.Tags = splitList(*tags)
 		}
 	}
 	for _, spec := range splitList(*env) {
@@ -89,7 +83,7 @@ func cmdGen(args []string) error {
 
 func cmdEnv(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("usage: sec env list  |  sec env ls TARGET  |  sec env write TARGET NAME[=VAR]…\n" +
+		return fmt.Errorf("usage: sec env list  |  sec env ls TARGET\n" +
 			"  TARGET is a path (./.env.production) or an environment name (production),\n" +
 			"  resolved against the dotenv files actually present under the current directory")
 	}
@@ -133,46 +127,8 @@ func cmdEnv(args []string) error {
 			fmt.Println(k)
 		}
 		return nil
-
-	case "write":
-		if len(args) < 3 {
-			return fmt.Errorf("usage: sec env write TARGET NAME[=VAR]…")
-		}
-		path, _, how, err := resolveEnvSpec(args[1], "")
-		if err != nil {
-			return err
-		}
-		s, err := open()
-		if err != nil {
-			return err
-		}
-		env := environmentOf(path)
-		kv := map[string]string{}
-		var names []string
-		for _, spec := range args[2:] {
-			n, v, ok := strings.Cut(spec, "=")
-			if !ok {
-				v = store.BareName(n)
-			}
-			val, err := s.Get(n)
-			if err != nil {
-				return err
-			}
-			kv[v] = string(val)
-			names = append(names, n)
-			if m, err := s.Meta(n); err == nil {
-				m.AddPlacement(store.Placement{Type: "file", Path: path, Var: v, Env: env})
-				s.SaveMeta(m)
-			}
-		}
-		if err := envfile.Set(path, kv); err != nil {
-			return err
-		}
-		s.Audit("env.write", owner.Agent(), names, map[string]string{"file": path, "env": env})
-		fmt.Printf("✓ wrote %d key(s) to %s (0600, placements recorded)\n", len(kv), describeTarget(path, how))
-		return nil
 	}
-	return fmt.Errorf("unknown env subcommand %q (want list, ls, or write)", args[0])
+	return fmt.Errorf("unknown env subcommand %q (want list or ls)", args[0])
 }
 
 // environmentOf labels a placement with the environment its file belongs to,
@@ -190,7 +146,6 @@ func environmentOf(path string) string {
 
 func cmdImport(args []string) error {
 	fs := flags("import")
-	tags := fs.String("tag", "", "tags for every imported secret")
 	noPlace := fs.Bool("no-place", false, "do not record the file as a placement")
 	only := fs.String("only", "", "comma-separated keys to import (default all)")
 	rest, err := parse(fs, args)
@@ -198,7 +153,7 @@ func cmdImport(args []string) error {
 		return err
 	}
 	if len(rest) != 1 {
-		return fmt.Errorf("usage: sec import TARGET [--tag t] [--only A,B] [--no-place]\n  TARGET is a path, an environment name (production, dev, local), or - for a sealed export on stdin")
+		return fmt.Errorf("usage: sec import TARGET [--only A,B] [--no-place]\n  TARGET is a path, an environment name (production, dev, local), or - for a sealed export on stdin")
 	}
 	// Any existing file is imported as given, whatever its name; otherwise
 	// the target is resolved as an environment name (production, dev, …).
@@ -290,9 +245,6 @@ func cmdImport(args []string) error {
 		if err != nil {
 			return err
 		}
-		if *tags != "" {
-			m.Tags = splitList(*tags)
-		}
 		if !*noPlace {
 			m.AddPlacement(store.Placement{Type: "file", Path: path, Var: k, Env: environmentOf(path)})
 		}
@@ -356,6 +308,5 @@ func cmdExport(args []string) error {
 	}
 	s.Audit("export", owner.Agent(), names, map[string]string{"file": *out})
 	fmt.Printf("✓ exported %d secret(s) to %s (0600)\n", len(names), *out)
-	_ = place.Parse // keep import used if placements move here later
 	return nil
 }

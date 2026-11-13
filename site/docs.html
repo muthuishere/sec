@@ -165,7 +165,7 @@ sec init --backend file          # servers, containers, CI</pre>
         GNU <code>base64</code>, <code>fold</code>) is still caught. The tail is held back briefly so a
         match cannot slip through the seam; output can lag a few hundred bytes behind.</li>
       <li id="ledger"><b>Placement ledger</b> — <code>push</code>, <code>render</code>,
-        <code>import</code>, <code>gen --env</code>, <code>push</code> and <code>place</code> record where a
+        <code>import</code>, <code>gen --env</code> and <code>push</code> record where a
         value went; <code>rotate</code>, <code>set --place</code> and <code>ok</code> replay them.</li>
       <li><b>Audit</b> — <code>~/.config/sec/audit.ndjson</code>: action, names, agent, cwd, template.
         Never values.</li>
@@ -244,11 +244,10 @@ sec get NAME --print      # owner-only, and denied at the harness for agents</pr
     <h3 id="set">sec set</h3>
     <p>Store a value from stdin — a masked prompt on a TTY, raw stdin from a pipe or heredoc. The value
     never touches argv.</p>
-<pre class="block">sec set NAME [--tag a,b] [--source URL] [--raw] [--place]  &lt; value on stdin
+<pre class="block">sec set NAME [--source URL] [--raw] [--place]  &lt; value on stdin
 sec set NAME --from FILE|DIR
 
   --source URL|note   where this is minted/revoked — used by rotate
-  --tag a,b           comma-separated tags
   --raw               keep the trailing newline (PEM / JSON material)
   --place             after storing, re-apply to every recorded placement
   --from FILE|DIR     store a whole file or folder instead of a value
@@ -274,7 +273,6 @@ sec set TLS --from ./certs
   --hex            hex token of --len random bytes
   --no-symbols     letters and digits only
   --env FILE=VAR   also write to a dotenv file (repeatable via comma)
-  --tag a,b        tags for --save
   --print          owner-only: print instead
 
 sec gen --save DB_PW --env .env=DB_PASSWORD
@@ -283,7 +281,7 @@ sec gen --save SESSION_KEY --hex --len 32</pre>
     <h3 id="import">sec import</h3>
     <p>Import every <code>KEY=value</code> of a dotenv. The file itself becomes a placement, so a later
     rotate updates it.</p>
-<pre class="block">sec import FILE|ENV [--project P] [--env E] [--only A,B] [--tag t] [--no-place]
+<pre class="block">sec import FILE|ENV [--project P] [--env E] [--only A,B] [--no-place]
 sec import SEALED_FILE        # from sec export --for
 sec import -                  # sealed export on stdin (what sec sync runs)
 
@@ -295,7 +293,7 @@ sec import x.sec</pre>
     different key is refused.</p>
 
     <h3 id="ls">sec ls · sec rm</h3>
-<pre class="block">sec ls [--project P] [--env E] [--tag T] [--json]   # names, version, placements, last use — never values
+<pre class="block">sec ls [--project P] [--env E] [--json]   # names, version, placements, last use — never values
 sec rm NAME            # delete a secret and its retired versions; placed copies are NOT removed</pre>
 
     <h3 id="use-cmd">sec use · sec project</h3>

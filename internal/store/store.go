@@ -295,7 +295,6 @@ func (s *Store) vaultDir() string       { return filepath.Join(s.Home, "vault") 
 func (s *Store) identityPath() string   { return filepath.Join(s.Home, "identity.txt") }
 func (s *Store) recipientsPath() string { return filepath.Join(s.Home, "recipients.txt") }
 func (s *Store) AuditPath() string      { return filepath.Join(s.Home, "audit.ndjson") }
-func (s *Store) CertDir() string        { return filepath.Join(s.Home, "ca") }
 
 // dirOf maps a qualified key to the folder holding its files and its bare NAME.
 func (s *Store) dirOf(key string) (string, string) {
@@ -471,43 +470,6 @@ func (s *Store) Recipients() ([]string, error) {
 		}
 	}
 	return out, nil
-}
-
-// AddRecipient appends a public key; existing secrets must be re-encrypted
-// (ReencryptAll) for the new recipient to read them.
-func (s *Store) AddRecipient(pub string) error {
-	if _, err := age.ParseX25519Recipient(pub); err != nil {
-		return err
-	}
-	f, err := os.OpenFile(s.recipientsPath(), os.O_APPEND|os.O_WRONLY, 0o600)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	_, err = fmt.Fprintln(f, pub)
-	return err
-}
-
-func (s *Store) ReencryptAll() (int, error) {
-	fresh, err := Open()
-	if err != nil {
-		return 0, err
-	}
-	s.recipients = fresh.recipients
-	names, err := s.List()
-	if err != nil {
-		return 0, err
-	}
-	for _, n := range names {
-		v, err := s.Get(n)
-		if err != nil {
-			return 0, err
-		}
-		if err := s.encryptTo(s.cipherPath(n, 0), v); err != nil {
-			return 0, err
-		}
-	}
-	return len(names), nil
 }
 
 // ValidName accepts NAME or project:NAME.

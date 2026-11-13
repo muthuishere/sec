@@ -9,7 +9,7 @@ S="$(cd "$(dirname "$0")/.." && pwd)/bin/sec"
 W=$(mktemp -d); cd "$W"
 $S init --backend file >/dev/null
 $S identity | grep -q "backend    : file"
-printf 'hunter2-super-secret' | $S set STRIPE_KEY --tag test --source https://example.com/keys >/dev/null
+printf 'hunter2-super-secret' | $S set STRIPE_KEY --source https://example.com/keys >/dev/null
 out=$($S exec -- sh -c 'echo "{{STRIPE_KEY}}"; echo "{{STRIPE_KEY}}" | base64')
 case "$out" in *hunter2*|*aHVudGVy*) echo "LEAK: $out"; exit 1;; esac
 # wrapped output is the accidental leak: xxd -p breaks at 60, base64 at 76,
@@ -30,7 +30,6 @@ $S rotate DB_PW --gen >/dev/null
 $S rotate DB_PW --undo >/dev/null
 $S rotate DB_PW --purge >/dev/null
 $S where DB_PW >/dev/null
-$S cert ca >/dev/null && $S cert issue --cn app.local --san localhost --out certs >/dev/null
 $S ls --json | grep -q '"name":"DB_PW"'
 # projects/envs: same NAME in two envs + global, no collision; get --out for daemons
 printf 'POSTGRES_PASSWORD=fake-dev-pw\n' > dev.env; printf 'POSTGRES_PASSWORD=fake-prod-pw\n' > prod.env
