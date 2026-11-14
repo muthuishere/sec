@@ -13,6 +13,9 @@ func TestReferencesAreNotSecrets(t *testing.T) {
 		"TOKEN: ${sec:GITHUB_TOKEN}",
 		"TOKEN=$GITHUB_TOKEN",
 		"SECRET: {{SECRET}}",
+		"sec run DEEMWAR_WHATSAPP_ACCESSTOKEN=WA_TOKEN -- python3 server.py",
+		`TOKEN = os.environ.get("WA_TOKEN", "")`,
+		"API_KEY = process.env[name]",
 	} {
 		if h := Find(line, nil); len(h) != 0 {
 			t.Errorf("%q flagged as %s", line, h[0].Name)

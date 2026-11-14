@@ -56,7 +56,7 @@ More worked examples — env vars, `.env`, Docker volumes, servers, another sec,
 Everything above is a thing the agent has to *remember*. The installer removes the remembering:
 `sec skill install` (run by `install.sh`, refreshed by every `sec` run) adds to Claude Code's
 settings deny rules for `.env` / the vault / `sec get` / `sec export` **and** a `PreToolUse` hook,
-`sec hook`, that checks every Bash, Read, Edit, Grep and Glob call. `cat .env`, `grep KEY .env`,
+`sec hook`, that keeps every Bash, Read, Grep and Glob call out of secret files. `cat .env`, `grep KEY .env`,
 reading the vault — refused before they run. Plain `claude`, no wrapper.
 
 ## Taskfile, docker compose and other `.env` readers

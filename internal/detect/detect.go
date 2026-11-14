@@ -161,5 +161,9 @@ var refRe = regexp.MustCompile(`^(?i:sec|env|dotenv|vault|op|keychain|ssm|secret
 // {{NAME}}, ${NAME}, ${sec:NAME}, $NAME, sec:NAME, env:NAME, dotenv:NAME.
 func IsReference(v string) bool {
 	v = strings.TrimRight(v, ",;")
-	return strings.HasPrefix(v, "{{") || strings.HasPrefix(v, "$") || refRe.MatchString(v)
+	return strings.HasPrefix(v, "{{") || strings.HasPrefix(v, "$") || refRe.MatchString(v) ||
+		envNameRe.MatchString(v) || // WA_TOKEN: another variable's name (sec run NAME=ENVVAR)
+		strings.ContainsAny(v, "()[]") // os.environ.get(…), process.env[…]: code, not a literal
 }
+
+var envNameRe = regexp.MustCompile(`^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+$|^[A-Z]{2,}$`)

@@ -545,8 +545,9 @@ Bash(sec get:*)            # the print path
 Bash(sec export:*)         # the bulk print path</pre>
 
     <h3 id="hook">sec hook</h3>
-    <p>Pre-tool guard: an agent's file reads, writes and searches (Bash, Read, Write, Edit, Grep, Glob,
-    notebooks) go past sec first; a denied call is audited as <code>hook.deny</code>.
+    <p>Pre-tool guard: an agent's shell commands, reads and searches of secret files (<code>.env</code>, the
+    vault) are refused, and so are direct writes to them; other files' contents are not scanned. A denied
+    call is audited as <code>hook.deny</code>.
     <code>sec skill install</code> (the installer) adds it to Claude Code's settings, so plain <code>claude</code> is guarded.</p>
 <pre class="block">sec hook --client claude</pre>
 

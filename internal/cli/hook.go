@@ -140,20 +140,14 @@ func judgeRead(path string) (string, []string) {
 	return "", nil
 }
 
-func judgeWrite(path, text string) (string, []string) {
+// judgeWrite only keeps agents out of secret files (.env, the vault). File
+// contents are not scanned: name/shape guesses refused IDs, IPs, env var
+// names and code far more often than they caught a real value.
+func judgeWrite(path, _ string) (string, []string) {
 	if path != "" && policy.IsSecretFile(path) {
 		return "sec: " + path + " holds secrets, and agents do not write it directly. Put a stored secret into it with `sec push NAME " + path + " [--as VAR]`, or generate one with `sec gen --save NAME --env " + path + "=VAR`.", nil
 	}
-	sealed, names, known := sealTextKnown(text)
-	if len(names) == 0 {
-		return "", nil
-	}
-	if !known {
-		return fmt.Sprintf("sec: refused writing %s — %s looks like a literal credential (matched by its key name or shape, not a vault value). "+
-			"Write a reference instead: {{NAME}}, ${NAME}, $NAME, sec:NAME, env:NAME or dotenv:NAME. With placeholders it is:\n\n%s\n\n"+
-			"If a real value must end up in a file, write the template and have `sec render <template> --out <file>` fill it.", path, strings.Join(names, ", "), sealed), names
-	}
-	return fmt.Sprintf("sec: this would write the live value of %s into %s. Write the placeholder instead — the same content with values sealed is:\n\n%s\n\nIf a real value must end up in a file, write the template and have `sec render <template> --out <file>` fill it.", strings.Join(names, ", "), path, sealed), names
+	return "", nil
 }
 
 // sealText replaces known values (vault, dotenv files, credential env vars)
@@ -173,8 +167,8 @@ func sealTextKnown(text string) (string, []string, bool) {
 		}
 	}
 	for n, v := range vault {
-		if allDigits(v) {
-			delete(vault, n) // an app / account / phone ID, not a credential
+		if notSecretShape(v) {
+			delete(vault, n) // an ID, phone number or IP address, not a credential
 		}
 	}
 	cwd, _ := os.Getwd()
@@ -250,15 +244,15 @@ func uniq(xs []string) []string {
 	return out
 }
 
-// allDigits: IDs (Meta app IDs, account numbers) live in the vault for
-// convenience but are not secrets; writing one into a note is fine.
-func allDigits(v string) bool {
+// notSecretShape: IDs, phone numbers and IP addresses live in the vault for
+// convenience but are not secrets — digits with . : + - and spaces only.
+func notSecretShape(v string) bool {
 	v = strings.TrimSpace(v)
 	if v == "" {
 		return false
 	}
 	for _, r := range v {
-		if r < '0' || r > '9' {
+		if !(r >= '0' && r <= '9') && !strings.ContainsRune(".:+- ", r) {
 			return false
 		}
 	}
