@@ -172,6 +172,11 @@ func sealTextKnown(text string) (string, []string, bool) {
 			vault, _ = s.Resolve(names)
 		}
 	}
+	for n, v := range vault {
+		if allDigits(v) {
+			delete(vault, n) // an app / account / phone ID, not a credential
+		}
+	}
 	cwd, _ := os.Getwd()
 	known := policy.RedactionSet(vault, cwd)
 	b, found := redact.Seal([]byte(text), known)
@@ -243,4 +248,19 @@ func uniq(xs []string) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+// allDigits: IDs (Meta app IDs, account numbers) live in the vault for
+// convenience but are not secrets; writing one into a note is fine.
+func allDigits(v string) bool {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return false
+	}
+	for _, r := range v {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }
