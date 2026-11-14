@@ -1,0 +1,31 @@
+# sec hub, always on. Install:
+#   sudo useradd --system --home /var/lib/sec-hub --create-home sec-hub
+#   sudo install -m 0755 sec /usr/local/bin/sec
+#   sudo cp deploy/sec-hub.service /etc/systemd/system/
+#   # first start only, as the sec-hub user, to make you admin and turn on the UI:
+#   sudo -u sec-hub sec hub serve --data /var/lib/sec-hub --admin you=/path/you.pub \
+#        --firebase-project PROJECT --firebase-api-key KEY \
+#        --admin-email muthuishere@gmail.com,admin@deemwar.com     (Ctrl-C once it says listening)
+#   sudo systemctl enable --now sec-hub
+#
+# The web UI has no port: people open it with `sec hub ui`, an ssh forward
+# over port 2222 with a key the hub knows. Only 2222 needs to be reachable.
+[Unit]
+Description=sec hub — one vault for you, your team and your agents
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=sec-hub
+ExecStart=/usr/local/bin/sec hub serve --data /var/lib/sec-hub --listen :2222
+Restart=always
+RestartSec=2
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/sec-hub
+PrivateTmp=true
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

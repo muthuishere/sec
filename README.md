@@ -216,6 +216,15 @@ https (`sec login https://hub…`), and the project is named from the git remote
 read key in `SEC_HUB_KEY` and `sec run` / `sec exec` pull in memory with no `sec init`. Values are
 encrypted at rest with the server's key — not blind. Log: names only. See [docs/team-sync.md](docs/team-sync.md).
 
+**Web UI, only through the hub's ssh.** Start the hub once with `--firebase-project ID
+--firebase-api-key KEY --admin-email you@gmail.com,admin@company.com` (saved in `DIR/web.json`). The UI
+opens no web port: `sec hub ui` opens an ssh forward over the hub's port 2222 (your key must be one the
+hub knows) and the browser on `http://localhost:8091`, then you sign in with Google. The Google email
+is bound to that key on first sign-in, and every later sign-in must match it. Admins (the listed
+emails) add people (email + ssh public key), grant read/write per project@env, revoke, remove, and
+read the log. Members see their grants and the names (never values) they can load. To keep it
+running: [deploy/sec-hub.service](deploy/sec-hub.service) (systemd, `Restart=always`).
+
 ## Threat model, honestly
 
 Defends against sloppiness and logs: secrets in transcripts, guides, commits, test output, chat.

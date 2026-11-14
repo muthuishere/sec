@@ -451,7 +451,16 @@ sec login https://hub.example.com          # hub over https works the same
 sec hub pull [ENV]                             # hub → project@env in the local vault
 sec hub push [ENV]                             # local project@env → hub (replaces that env; old copy kept)
 sec hub user add NAME KEY.pub --role read|write --project P [--env E]
-sec hub user rm NAME  ·  sec hub user ls  ·  sec hub log [-n N]  ·  sec logs --hub</pre>
+sec hub user rm NAME  ·  sec hub user ls  ·  sec hub log [-n N]  ·  sec logs --hub
+sec hub ui [--port 8091]                       # the web UI, through the hub's ssh only</pre>
+    <p><b>Web UI.</b> Turn it on once with <code>--firebase-project ID --firebase-api-key KEY
+    --admin-email a@x,b@y</code> on <code>sec hub serve</code> (saved in <code>DIR/web.json</code>). It has no web port:
+    <code>sec hub ui</code> is an ssh forward over the hub's own ssh, so only a key the hub knows can load it,
+    and then Google sign-in says who you are. The first sign-in binds that email to the key, and later
+    sign-ins must use the same one. Admins add people
+    (email + ssh public key), grant and revoke read/write per project@env, remove people and read the log;
+    members see their grants and the <em>names</em> they can load. No value is ever shown. Always on:
+    <code>deploy/sec-hub.service</code> (systemd).</p>
     <p><b>CI:</b> make a key, <code>sec hub user add ci ci.pub --role read --project P --env production</code>,
     put the private key in <code>SEC_HUB_KEY</code> and set <code>SEC_ENV</code>. <code>sec run</code> /
     <code>sec exec</code> then pull that env into memory — no <code>sec init</code>, nothing on disk.

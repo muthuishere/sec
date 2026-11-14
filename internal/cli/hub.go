@@ -29,6 +29,8 @@ func init() {
 }
 
 const hubUsage = `usage: sec hub serve --data DIR [--listen :2222] [--admin NAME=PUBKEYFILE]
+                     [--firebase-project ID --firebase-api-key KEY --admin-email a@x,b@y]
+       sec hub ui [--port 8091]       open the hub's web UI through its ssh (no open web port)
        sec hub connect ssh://[user@]host[:port]
        sec hub pull [ENV]
        sec hub push [ENV]
@@ -46,6 +48,8 @@ func cmdHub(args []string) error {
 		return hubServe(args[1:])
 	case "connect":
 		return hubConnect(args[1:])
+	case "ui":
+		return hubUI(args[1:])
 	case "pull":
 		return hubPull(args[1:])
 	case "push":
@@ -69,6 +73,9 @@ func hubServe(args []string) error {
 	listen := fs.String("listen", ":2222", "ssh address to listen on (\"\" = no ssh)")
 	httpAddr := fs.String("http", "", "also serve http on this address (e.g. :8080), for a TLS proxy in front")
 	admin := fs.String("admin", "", "NAME=PUBKEYFILE: the first admin (only when users.json is empty)")
+	fbProject := fs.String("firebase-project", "", "web UI: Firebase project id (Google sign-in); saved in DIR/web.json")
+	fbKey := fs.String("firebase-api-key", "", "web UI: Firebase web API key (public); saved in DIR/web.json")
+	adminEmails := fs.String("admin-email", "", "web UI: comma-separated Google emails that are admins; saved in DIR/web.json")
 	if _, err := parse(fs, args); err != nil {
 		return err
 	}
@@ -91,6 +98,14 @@ func hubServe(args []string) error {
 	srv, err := hub.Open(*data, name, key)
 	if err != nil {
 		return err
+	}
+	if *fbProject != "" || *fbKey != "" || *adminEmails != "" {
+		if err := srv.ConfigureWeb(hub.WebConfig{FirebaseProject: *fbProject, FirebaseAPIKey: *fbKey, AdminEmails: splitList(*adminEmails)}); err != nil {
+			return err
+		}
+	}
+	if srv.WebEnabled() {
+		fmt.Fprintln(os.Stderr, "sec hub web UI: only through this ssh — run `sec hub ui` (or ssh -L 8091:hub:80 -N -p PORT host)")
 	}
 	errc := make(chan error, 2)
 	if *httpAddr != "" {

@@ -43,7 +43,8 @@ type Grant struct {
 // User is a person or a machine: a name, one ssh key, grants.
 type User struct {
 	Name   string  `json:"name"`
-	Key    string  `json:"key"` // authorized_keys line
+	Key    string  `json:"key"`             // authorized_keys line
+	Email  string  `json:"email,omitempty"` // Google email bound at first UI sign-in
 	Admin  bool    `json:"admin,omitempty"`
 	Grants []Grant `json:"grants,omitempty"`
 }
@@ -66,6 +67,12 @@ type Server struct {
 	config *ssh.ServerConfig
 	id     *age.X25519Identity
 	mu     sync.Mutex // users.json, data and log writes
+
+	web         *WebConfig // DIR/web.json; nil = no UI
+	sk          []byte
+	skOnce      sync.Once
+	certs       certCache
+	VerifyToken func(idToken string) (email string, err error) // tests
 }
 
 func (s *Server) usersPath() string { return filepath.Join(s.Dir, "users.json") }
@@ -86,6 +93,9 @@ func Open(dir, adminName string, adminKey []byte) (*Server, error) {
 		return nil, err
 	}
 	if s.id, err = loadOrMakeAgeKey(filepath.Join(dir, "hub.agekey")); err != nil {
+		return nil, err
+	}
+	if err := s.loadWeb(); err != nil {
 		return nil, err
 	}
 	users, err := s.loadUsers()
@@ -173,6 +183,9 @@ func normKey(b []byte) (string, error) {
 }
 
 func sameKey(line string, k ssh.PublicKey) bool {
+	if line == "" {
+		return false
+	}
 	pk, _, _, _, err := ssh.ParseAuthorizedKey([]byte(line))
 	return err == nil && bytes.Equal(pk.Marshal(), k.Marshal())
 }
@@ -256,6 +269,16 @@ func (s *Server) handleConn(c net.Conn) {
 	go ssh.DiscardRequests(reqs)
 	user := sc.Permissions.Extensions["user"]
 	for nc := range chans {
+		if nc.ChannelType() == "direct-tcpip" && s.WebEnabled() {
+			// ssh -L PORT:hub:80 — whatever the target, it is the UI
+			ch, creqs, err := nc.Accept()
+			if err != nil {
+				continue
+			}
+			go ssh.DiscardRequests(creqs)
+			go s.serveUI(user, ch)
+			continue
+		}
 		if nc.ChannelType() != "session" {
 			nc.Reject(ssh.UnknownChannelType, "session only")
 			continue
@@ -423,6 +446,7 @@ func (s *Server) userCmd(u User, us []User, args []string, stdin io.Reader, e *L
 	case "ls":
 		type row struct {
 			Name   string  `json:"name"`
+			Email  string  `json:"email,omitempty"`
 			Admin  bool    `json:"admin,omitempty"`
 			Key    string  `json:"key"` // fingerprint
 			Grants []Grant `json:"grants,omitempty"`
@@ -433,7 +457,7 @@ func (s *Server) userCmd(u User, us []User, args []string, stdin io.Reader, e *L
 			if k, _, _, _, err := ssh.ParseAuthorizedKey([]byte(x.Key)); err == nil {
 				fp = ssh.FingerprintSHA256(k)
 			}
-			out = append(out, row{x.Name, x.Admin, fp, x.Grants})
+			out = append(out, row{x.Name, x.Email, x.Admin, fp, x.Grants})
 		}
 		return jsonOut(out)
 	case "rm":

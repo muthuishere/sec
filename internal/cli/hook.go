@@ -13,6 +13,7 @@ import (
 	"github.com/muthuishere/sec/internal/envfile"
 	"github.com/muthuishere/sec/internal/policy"
 	"github.com/muthuishere/sec/internal/redact"
+	"github.com/muthuishere/sec/internal/store"
 )
 
 func init() {
@@ -167,8 +168,8 @@ func sealTextKnown(text string) (string, []string, bool) {
 		}
 	}
 	for n, v := range vault {
-		if notSecretShape(v) {
-			delete(vault, n) // an ID, phone number or IP address, not a credential
+		if notSecretShape(v) || notSecretName(n) {
+			delete(vault, n) // an ID, phone, IP, username, email or host — not a credential
 		}
 	}
 	cwd, _ := os.Getwd()
@@ -257,4 +258,18 @@ func notSecretShape(v string) bool {
 		}
 	}
 	return true
+}
+
+// notSecretName: vault entries whose name says they are an identifier, not a
+// credential (DOCKER_USERNAME, SMTP_HOST, ADMIN_EMAIL, AWS_REGION). Their
+// values are ordinary words — a username equal to a GitHub handle would
+// otherwise hide every file that mentions the handle.
+func notSecretName(name string) bool {
+	n := strings.ToUpper(store.BareName(name))
+	for _, sfx := range []string{"USERNAME", "_USER", "EMAIL", "_HOST", "HOSTNAME", "_PORT", "REGION", "ACCOUNT_ID", "PROJECT_ID", "PROJECT"} {
+		if n == strings.TrimPrefix(sfx, "_") || strings.HasSuffix(n, sfx) {
+			return true
+		}
+	}
+	return false
 }

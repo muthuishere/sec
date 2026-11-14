@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>sec hub</title>
+<style>
+  :root { --bg:#fbfaf7; --fg:#1b1a17; --mute:#6d6a62; --line:#e4e0d6; --card:#fff; --acc:#1f5f4a; --bad:#a3352b; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#141412; --fg:#ecebe6; --mute:#9a978e; --line:#2c2b27; --card:#1b1b18; --acc:#7cc4a6; --bad:#e2897f; } }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 ui-sans-serif,-apple-system,"Segoe UI",sans-serif; }
+  header { display:flex; align-items:center; gap:12px; padding:14px 20px; border-bottom:1px solid var(--line); }
+  header b { font-size:17px } header .who { margin-left:auto; color:var(--mute); font-size:13px }
+  main { max-width:1000px; margin:0 auto; padding:20px 16px 60px }
+  nav { display:flex; gap:6px; margin-bottom:18px; flex-wrap:wrap }
+  nav button { background:none; border:1px solid var(--line); color:var(--fg); padding:6px 12px; border-radius:6px; cursor:pointer }
+  nav button.on { background:var(--fg); color:var(--bg); border-color:var(--fg) }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:14px }
+  table { width:100%; border-collapse:collapse; font-size:14px } th,td { text-align:left; padding:7px 6px; border-bottom:1px solid var(--line); vertical-align:top }
+  th { color:var(--mute); font-weight:500; font-size:12px; text-transform:uppercase; letter-spacing:.04em }
+  code, .mono { font:12.5px ui-monospace,Menlo,monospace }
+  .chip { display:inline-block; border:1px solid var(--line); border-radius:999px; padding:1px 8px; margin:2px 4px 2px 0; font-size:12.5px }
+  .chip button { border:0; background:none; color:var(--bad); cursor:pointer; padding:0 0 0 4px }
+  .mute { color:var(--mute) } .bad { color:var(--bad) } .ok { color:var(--acc) }
+  input, select, textarea { font:inherit; color:var(--fg); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:6px 8px; width:100% }
+  textarea { font:12px ui-monospace,Menlo,monospace; min-height:56px }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:10px; margin:10px 0 }
+  .btn { background:var(--acc); color:#fff; border:0; border-radius:6px; padding:8px 14px; cursor:pointer; font:inherit }
+  @media (prefers-color-scheme: dark) { .btn { color:#0f1a15 } }
+  .link { background:none; border:0; color:var(--bad); cursor:pointer; font:inherit; padding:0 }
+  .center { text-align:center; padding:60px 16px } .center p { color:var(--mute) }
+  .wrap { overflow-x:auto }
+  #msg { min-height:20px; margin:6px 0 }
+</style>
+</head>
+<body>
+<header><b>sec hub</b><span class="mute">one vault for you, your team and your agents</span><span class="who" id="who"></span></header>
+<main id="app"><div class="center"><p>Loading…</p></div></main>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+async function api(path, body) {
+  const r = await fetch(path, body === undefined ? {} : {method:"POST", headers:{"Content-Type":"application/json","X-Sec-UI":"1"}, body:JSON.stringify(body)});
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(j.error || r.statusText), {status:r.status});
+  return j;
+}
+let cfg, me, tab = "projects";
+
+async function boot() {
+  cfg = await api("/api/config");
+  firebase.initializeApp({apiKey:cfg.apiKey, authDomain:cfg.authDomain, projectId:cfg.projectId});
+  try { me = await api("/api/me"); render(); } catch (e) { signInPage(e.status === 401 ? "" : e.message); }
+}
+
+function signInPage(err) {
+  $("#who").textContent = "key: " + cfg.sshUser;
+  $("#app").innerHTML = `<div class="center"><h2>Sign in</h2>
+    <p>You reached this page through the hub's ssh as <b>${esc(cfg.sshUser)}</b>.<br>Now confirm who you are with Google.</p>
+    <button class="btn" id="g">Sign in with Google</button><p class="bad">${esc(err)}</p></div>`;
+  $("#g").onclick = async () => {
+    try {
+      const p = new firebase.auth.GoogleAuthProvider();
+      p.setCustomParameters({prompt:"select_account"});
+      const res = await firebase.auth().signInWithPopup(p);
+      await api("/api/session", {idToken: await res.user.getIdToken()});
+      await firebase.auth().signOut(); // the hub keeps its own session
+      me = await api("/api/me"); render();
+    } catch (e) { signInPage(e.message); }
+  };
+}
+
+function render() {
+  $("#who").innerHTML = `${esc(me.email)} · ${me.admin ? "admin" : "member"} · <button class="link" id="out">sign out</button>`;
+  $("#out").onclick = async () => { await api("/api/logout", {}); location.reload(); };
+  const tabs = me.admin ? ["projects","people","log"] : ["projects","me","log"];
+  $("#app").innerHTML = `<nav>${tabs.map(t => `<button data-t="${t}" class="${t===tab?"on":""}">${t}</button>`).join("")}</nav><div id="msg"></div><div id="view"></div>`;
+  document.querySelectorAll("nav button").forEach(b => b.onclick = () => { tab = b.dataset.t; render(); });
+  ({projects, people, log, me:mine})[tab]();
+}
+const flash = (t, bad) => { $("#msg").innerHTML = `<span class="${bad?"bad":"ok"}">${esc(t)}</span>`; };
+
+async function projects() {
+  const ps = await api("/api/projects");
+  $("#view").innerHTML = ps.length ? `<div class="card wrap"><table><tr><th>project@env</th><th>names (never values)</th><th>you</th><th>updated</th></tr>
+    ${ps.map(p => `<tr><td class="mono">${esc(p.project)}@${esc(p.env)}</td><td>${p.names.map(n => `<span class="chip mono">${esc(n)}</span>`).join("")}</td>
+    <td>${p.write?"write":"read"}</td><td class="mute">${new Date(p.updated).toLocaleString()}</td></tr>`).join("")}</table></div>`
+    : `<div class="card mute">Nothing you can see yet. ${me.admin ? "Push one with <code>sec hub push dev</code> from a repo." : "Ask an admin for a grant."}</div>`;
+}
+
+function mine() {
+  $("#view").innerHTML = `<div class="card"><p>user <b>${esc(me.user)}</b> · key <span class="mono">${esc(me.key)}</span></p>
+    <p>${(me.grants||[]).map(g => `<span class="chip mono">${esc(g.role)} ${esc(g.project)}@${esc(g.env||"*")}</span>`).join("") || '<span class="mute">no grants yet</span>'}</p>
+    <p class="mute">From a repo: <code>sec load</code> pulls what you may read; <code>sec hub push ENV</code> publishes where you may write.</p></div>`;
+}
+
+async function people() {
+  const us = await api("/api/users");
+  $("#view").innerHTML = `<div class="card"><b>Add a person or a grant</b>
+    <div class="grid">
+      <input id="f-email" placeholder="email (Google)">
+      <input id="f-name" placeholder="name (default: email)">
+      <input id="f-project" placeholder="project, e.g. acme/billing-api">
+      <input id="f-env" placeholder="env (blank = all)">
+      <select id="f-role"><option>read</option><option>write</option></select>
+    </div>
+    <textarea id="f-key" placeholder="their ssh public key — ssh-ed25519 AAAA… (needed for a new person; it is how they reach the hub)"></textarea>
+    <p><button class="btn" id="f-go">Save</button></p></div>
+    <div class="card wrap"><table><tr><th>person</th><th>key</th><th>grants</th><th></th></tr>
+    ${us.map(u => `<tr><td><b>${esc(u.name)}</b>${u.admin?' <span class="chip">admin</span>':""}<br><span class="mute">${esc(u.email||"not signed in yet")}</span></td>
+      <td class="mono mute">${esc(u.key||"—")}</td>
+      <td>${(u.grants||[]).map(g => `<span class="chip mono">${esc(g.role)} ${esc(g.project)}@${esc(g.env||"*")}<button title="revoke" data-rv='${esc(JSON.stringify({name:u.name,project:g.project,env:g.env||""}))}'>×</button></span>`).join("") || '<span class="mute">—</span>'}</td>
+      <td>${u.name===me.user?"":`<button class="link" data-rm="${esc(u.name)}">remove</button>`}</td></tr>`).join("")}</table></div>`;
+  $("#f-go").onclick = async () => {
+    const v = id => $("#"+id).value.trim();
+    try { await api("/api/users", {email:v("f-email"), name:v("f-name"), project:v("f-project"), env:v("f-env"), role:v("f-role"), key:v("f-key")}); await people(); flash("saved"); }
+    catch (e) { flash(e.message, true); }
+  };
+  document.querySelectorAll("[data-rv]").forEach(b => b.onclick = async () => {
+    try { await api("/api/users/revoke", JSON.parse(b.dataset.rv)); await people(); flash("revoked"); } catch (e) { flash(e.message, true); } });
+  document.querySelectorAll("[data-rm]").forEach(b => b.onclick = async () => {
+    if (!confirm("Remove " + b.dataset.rm + " from the hub?")) return;
+    try { await api("/api/users/remove", {name:b.dataset.rm}); await people(); flash("removed"); } catch (e) { flash(e.message, true); } });
+}
+
+async function log() {
+  const es = await api("/api/log");
+  $("#view").innerHTML = `<div class="card wrap"><table><tr><th>when</th><th>who</th><th>what</th><th>where</th><th>names</th><th></th></tr>
+    ${es.map(e => `<tr><td class="mute">${new Date(e.time).toLocaleString()}</td><td>${esc(e.user)}</td><td class="mono">${esc(e.action)}</td>
+    <td class="mono">${e.project?esc(e.project)+"@"+esc(e.env||"*"):""}</td><td class="mono mute">${esc((e.names||[]).join(" "))}</td>
+    <td class="${e.ok?"ok":"bad"}">${e.ok?"ok":esc(e.error)}</td></tr>`).join("")}</table></div>`;
+}
+boot().catch(e => { $("#app").innerHTML = `<div class="center bad">${esc(e.message)}</div>`; });
+</script>
+</body>
+</html>
